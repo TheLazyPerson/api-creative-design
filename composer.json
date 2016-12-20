@@ -4,6 +4,7 @@
         "slim/php-view": "^2.2",
         "monolog/monolog": "^1.22",
         "robmorgan/phinx": "^0.6.5",
-        "illuminate/database": "~5.1"
+        "illuminate/database": "~5.1",
+        "akrabat/rka-ip-address-middleware": "^0.5.0"
     }
 }

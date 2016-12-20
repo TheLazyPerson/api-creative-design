@@ -15,6 +15,7 @@ return array(
     'Symfony\\Component\\Config\\' => array($vendorDir . '/symfony/config'),
     'Slim\\Views\\' => array($vendorDir . '/slim/php-view/src'),
     'Slim\\' => array($vendorDir . '/slim/slim/Slim'),
+    'RKA\\Middleware\\' => array($vendorDir . '/akrabat/rka-ip-address-middleware/src'),
     'Psr\\Log\\' => array($vendorDir . '/psr/log/Psr/Log'),
     'Psr\\Http\\Message\\' => array($vendorDir . '/psr/http-message/src'),
     'Phinx\\' => array($vendorDir . '/robmorgan/phinx/src/Phinx'),

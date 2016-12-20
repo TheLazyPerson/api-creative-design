@@ -41,14 +41,19 @@ $container['db'] = function ($c) {
 /*
  * Middleware for getting request information	
  */
-$app->add(function ($request, $response, $next) {
+$checkProxyHeaders = true;
+$app->add(new RKA\Middleware\IpAddress($checkProxyHeaders));
+
+$app->add(function (Request $request,Response $response,Callable $next) {
 	$headers = $request->getHeaders();
-	$this->logger->addInfo("Request Recieved ");
+	$ipAddress = $request->getAttribute('ip_address');
+	$this->logger->addInfo("Request Recieved from $ipAddress");
 	foreach ($headers as $name => $values) {
 		// Code .. # for adding data to database for requests
-	   	//$this->logger->addInfo($name . ": " . implode(", ", $values));
+	   	$this->logger->addInfo($name . ": " . implode(", ", $values));
 	   	//$this->logger->addInfo($request->getHeader(''));
 	}
+
 	if ($request->hasHeader('HTTP_X_FORWARDED_FOR')) {
 	    $this->logger->addInfo($request->getHeader('HTTP_X_FORWARDED_FOR'));
 	}
@@ -59,9 +64,16 @@ $app->add(function ($request, $response, $next) {
 });
 
 
+$app->get('/', function ($request, $response, $args) {
+    $ipAddress = $request->getAttribute('ip_address');
+
+    return $response;
+});
+
+
 $app->get('/testsqlconnection', function(Request $request, Response $response) {
 	
-	$this->logger->addInfo("Testing Sql Connection .. ");
+	$this->logger->addInfo("Testing Sql Connection $ipAddress.. ");
 	if (isset($this->db)) {
 		$this->logger->addInfo("Database Connection Found .. ");
 	}
@@ -159,32 +171,42 @@ $app->get('/product/{id}', function (Request $request, Response $response, $args
 });
 
 $app->post('/product', function (Request $request, Response $response, $args){
-    /*
-    name:
-description:
-max_rows:
-max_charcters:
-material:
-cod:
-letter_type:
-nameplate_used:
-fitting_place:
-length:
-height:
-depth:
-weight:
-images:
-price:
 
-     */
+    $productDetails = $request->getParsedBody();
     
-    $body = $request->getParsedBody();
+    /*$product = new ProductEntity();*/
 
     $this->logger->addInfo(" Inserting product ". $body["product"]["name"] ." into database .. ");
 
     return $response;
 });
+/*
+ * cart requests
+ */
+$app->post('/cart', function (Request $request, Response $response, $args){
 
+	$params = $request->getParsedBody();
+	$user_id = $params["userid"];
+	$this->logger->addInfo(" Fetching cart data for user $user_id from database .. ");
+	
+	$customer = new CustomerMapper($this->db);
+    $user = $customer->getUserDetailsByUserId($user_id);
+    $cartMapper = new CartMapper();
+    $cartDetails = $cartMapper->getCart($user);
+    
+    return $response;
+});
+
+
+$app->post('/orders', function (Request $request, Response $response, $args){
+
+    return $response;
+});
+
+$app->post('/wishlist', function (Request $request, Response $response, $args){
+
+    return $response;
+});
 
 
 $app->run();

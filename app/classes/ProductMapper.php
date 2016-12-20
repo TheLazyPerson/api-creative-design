@@ -36,6 +36,10 @@ class ProductMapper extends Mapper
 		return $results;
 	}
 	
+	public function insertProduct(ProductEntity $product){
+		var_dump($product);
+	}
+
 }	
 
  
