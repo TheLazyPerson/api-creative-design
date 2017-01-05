@@ -36,8 +36,13 @@ class ProductMapper extends Mapper
 		return $results;
 	}
 	
-	public function insertProduct(ProductEntity $product){
-		var_dump($product);
+	public function save(ProductEntity $product){
+		
+		$sql = "INSERT INTO `products` (`id`, `name`, `description`, `max_rows`, `max_characters`, `material`, `cod`, `letter_type`, `nameplate_used`, `fitting_place`, `length`, `height`, `depth`, `weight`, `images_id`, `price`, `date_added`, `last_modified`, `date_available`, `status`, `tax_class_id`) VALUES (NULL, '{$product->getName()}', '{$product->getDescription()}', '{$product->getMaxRows()}', '{$product->getMaxCharacters()}', '{$product->getMaterial()}', '{$product->getCOD()}', '{$product->getLetterType()}', '{$product->getNameplateUsed()}', '{$product->getFittingPlace()}', '{$product->getLength()}', '{$product->getHeight()}', '{$product->getDepth()}', '{$product->getWeight()}', '{$product->getImages()}', '{$product->getPrice()}', NOW(), NOW(), '2016-12-26 00:00:00', '1', '1');";
+		/*$sql = "INSERT INTO `products`(`id`, `name`, `description`, `max_rows`, `max_characters`, `material`, `cod`, `letter_type`, `nameplate_used`, `fitting_place`, `length`, `height`, `depth`, `weight`, `images_id`, `price`, `date_added`, `last_modified`, `date_available`, `status`, `tax_class_id`) VALUES ('".$product->getName()."','".$product->getDescription()."',".$product->getMaxRows().",".$product->getMaxCharacters().",'".$product->getMaterial()."',".$product->getCOD().",'".$product->getLetterType()."','".$product->getNameplateUsed()."','".$product->getFittingPlace()."',".$product->getLength().",".$product->getHeight().",".$product->getDepth().",".$product->getWeight().",".$product->getImages().",".$product->getPrice().",NOW(),NOW(),'2016-12-09 00:00:00',1,1)";*/
+
+		$result = mysql_query($sql);
+		return $result;
 	}
 
 }	

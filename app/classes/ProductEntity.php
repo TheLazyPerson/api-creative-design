@@ -8,6 +8,7 @@ class ProductEntity
 	protected $id;
 	protected $name;
 	protected $description;
+    protected $additionalInformation;
 	protected $max_rows;
 	protected $max_characters;
 	protected $material;
@@ -21,8 +22,9 @@ class ProductEntity
 	protected $weight;
 	protected $images;
 	protected $price;
+    protected $status;
+  
 
-    
 
 	function __construct(array $data)
 	{
@@ -31,6 +33,7 @@ class ProductEntity
             $this->id = $data['id'];
             $this->name = $data['name'];
             $this->description = $data['description'];
+            $this->additionalInformation = $data['addtional_information'];
             $this->max_rows = $data['max_rows'];
             $this->max_characters = $data['max_characters'];
             $this->material = $data['material'];
@@ -44,6 +47,7 @@ class ProductEntity
             $this->weight = $data['depth'];
             $this->images = $data['images_id'];
             $this->price = $data['price'];
+            $this->status = $data['status'];
         }
 	}
 
@@ -57,6 +61,10 @@ class ProductEntity
 
     public function getDescription() {
         return $this->description;
+    }
+
+    public function getAddtionalInformation() {
+        return $this->additionalInformation;
     }
 
     public function getMaxRows() {
@@ -111,7 +119,10 @@ class ProductEntity
         return $this->price;
     }
 
-
+    public function getStatus() {
+        return $this->status;
+    }
+/*
     public function setId($id) {
         $this->id = $id;
     }
@@ -174,7 +185,7 @@ class ProductEntity
 
     public function setPrice($price) {
         $this->price = $price;
-    }
+    }*/
 
     
 
