@@ -225,6 +225,8 @@ $app->get('/products/normal', function (Request $request, Response $response) {
 		
 		foreach ($data as $key) {
 			
+			$images = $productMapper->getImagesOfProductsById($key->getId());
+			
 			$product["id"] = $key->getId();
 			$product["name"] = $key->getName();
 			$product["description"] = $key->getDescription();
@@ -233,6 +235,11 @@ $app->get('/products/normal', function (Request $request, Response $response) {
 			$product["cod"] = $key->getCOD();
 			$product["price"] = $key->getPrice();
 			$product["status"] = $key->getStatus();
+			
+			foreach ($images as $image) {
+				$product["image"] = $image->getPath();
+				break;
+			}
 			$result ["products"][$key->getId()] = $product;
 			
 		}
@@ -241,7 +248,7 @@ $app->get('/products/normal', function (Request $request, Response $response) {
    		return $response->withJson($result,200);
 	}
 	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
-	$result["error"] = "cannot process request contact your administrator";
+	$result["error"] = "1";
 	return $response->withJson($result,200);
 });
 
@@ -255,6 +262,8 @@ $app->get('/products/featured', function (Request $request, Response $response) 
 		
 		foreach ($data as $key) {
 			
+			$images = $productMapper->getImagesOfProductsById($key->getId());
+
 			$product["id"] = $key->getId();
 			$product["name"] = $key->getName();
 			$product["description"] = $key->getDescription();
@@ -263,6 +272,10 @@ $app->get('/products/featured', function (Request $request, Response $response) 
 			$product["cod"] = $key->getCOD();
 			$product["price"] = $key->getPrice();
 			$product["status"] = $key->getStatus();
+			foreach ($images as $image) {
+				$product["image"] = $image->getPath();
+				break;
+			}
 			$result ["products"][$key->getId()] = $product;
 			
 		}
@@ -273,15 +286,6 @@ $app->get('/products/featured', function (Request $request, Response $response) 
 	$result["error"] = "cannot process request contact your administrator";
 	return $response->withJson($result,200);
 });
-
-$app->post('/product/featured', function (Request $request, Response $response, $args){
-	$productId = $request->getParsedBody();
-    $this->logger->addInfo("Adding product ". $productDetails["name"] ." as Featured Product database .. ");
-    $productMapper = new NormalProductMapper($this->db);
-	$result["success"] = "1";
-	return $response->withJson($result,201);
-});
-
 
 $app->get('/products/nameplate', function (Request $request, Response $response) {
 	$this->logger->addInfo(" Request Recieved for listing of products .. ");
@@ -392,14 +396,11 @@ $app->post('/product/normal', function (Request $request, Response $response, $a
 	return $response->withJson($result,201);
 });
 
-
-
 $app->post('/product/nameplate', function (Request $request, Response $response, $args){
 	
     $productDetails = $request->getParsedBody();
     $files = $request->getUploadedFiles();
-    var_dump($productDetails);
-    var_dump($files);
+    
    	 //creating data array to be passed to Product Entity
     $product["product"]["name"] = $productDetails["name"];
     $product["product"]["price"] = $productDetails["price"];
@@ -429,32 +430,32 @@ $app->post('/product/nameplate', function (Request $request, Response $response,
 });
 
 
-$app->get('/product/{id}', function (Request $request, Response $response, $args){
+$app->get('/productnormal/{id}', function (Request $request, Response $response, $args){
     $productid = $args["id"];
     $this->logger->addInfo(" Fetching product for ". $productid ." id.. ");
 
-    $productMapper = new ProductMapper($this->db);
+    $productMapper = new NormalProductMapper($this->db);
 	$result = array();
 	$data = $productMapper->getProductById($productid);
+	$images = $productMapper->getImagesOfProductsById($productid);
 	if (isset($data) ) {
 		$this->logger->addInfo("Products Retrived .. ");
+
 		$product["id"] = $data->getId();
 		$product["name"] = $data->getName();
 		$product["description"] = $data->getDescription();
-		$product["max_rows"] = $data->getMaxRows();
-		$product["max_charcters"] = $data->getMaxCharacters();
+		$product["additionalInformation"] = $data->getAddtionalInformation();
 		$product["material"] = $data->getMaterial();
 		$product["cod"] = $data->getCOD();
-		$product["letter_type"] = $data->getLetterType();
-		$product["nameplate_used"] = $data->getNameplateUsed();
-		$product["fitting_place"] = $data->getFittingPlace();
-		$product["length"] = $data->getLength();
-		$product["height"] = $data->getHeight();
-		$product["depth"] = $data->getDepth();
-		$product["weight"] = $data->getWeight();
-
-		$product["images"] = $data->getImages();
 		$product["price"] = $data->getPrice();
+		$product["featured"] = $data->getFeatured();
+		$product["status"] = $data->getStatus();
+		
+		$i = 1;
+		foreach ($images as $key) {
+			$product["images"][$i] = $key->getPath();
+			$i++;
+		}
 		$result ["product"] = $product;
 
    		return $response->withJson($result,200);
@@ -465,21 +466,6 @@ $app->get('/product/{id}', function (Request $request, Response $response, $args
     return $response;
 });
 
-$app->post('/product/featured/{id}', function (Request $request, Response $response, $args){
-	
-    return $response;
-});
-
-
-$app->post('/product/imageupload', function (Request $request, Response $response, $args){
-	$files = $request->getUploadedFiles();
-	var_dump($files);
-	foreach ($files as $key => $file) {
-		$this->logger->addInfo(" Image Upload {$file->getClientFilename()} and {$file->getSize()} ");
-	}
-	
-    return $response;
-});
 
 /*
  * cart requests
@@ -497,6 +483,412 @@ $app->post('/cart', function (Request $request, Response $response, $args){
     
     return $response;
 });
+
+
+/*
+	Blog Section
+ */
+$app->get('/blogs', function (Request $request, Response $response) {
+	$this->logger->addInfo(" Request Recieved for listing of blogs .. ");
+	$blogMapper = new BlogMapper($this->db);
+	$result = array();
+	$data = $blogMapper->getBlogs();
+	if (isset($data) ) {
+		$this->logger->addInfo("Blogs Retrived .. ");
+		
+		foreach ($data as $key) {
+
+			$blog["id"] = $key->getId();
+			$blog["title"] = $key->getTitle();
+			$blog["short_description"] = $key->getShortDescription();
+			$blog["content"] = $key->getContent();
+			$blog["image_path"] = $key->getImagePath();
+			$blog["visible"] = $key->isVisible();
+			$result["blogs"][$key->getId()] = $blog;
+		}
+	
+		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "cannot process request contact your administrator";
+	return $response->withJson($result,200);
+});
+$app->get('/blog/{id}', function (Request $request, Response $response, $args){
+    $blogid = $args["id"];
+    $this->logger->addInfo(" Fetching blog for ". $blogid ." id.. ");
+
+    $blogMapper = new BlogMapper($this->db);
+	$result = array();
+	$data = $blogMapper->getBlogById($blogid);
+	
+	if (isset($data) ) {
+		$this->logger->addInfo("Blog Retrived .. ");
+
+		$blog["id"] = $data->getId();
+		$blog["title"] = $data->getTitle();
+		$blog["short_description"] = $data->getShortDescription();
+		$blog["content"] = $data->getContent();
+		$blog["image_path"] = $data->getImagePath();
+		$blog["visible"] = $data->isVisible();
+		
+		
+		$result ["blog"] = $blog;
+
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data for ". $blogid ." id .. ");
+	$result["error"] = "cannot process request contact your administrator";
+
+    return $response;
+});
+$app->post('/blog/add', function (Request $request, Response $response, $args){
+
+	$imagesTargetPath = "images/blog/";
+    $blogDetails = $request->getParsedBody();
+    $file = $request->getUploadedFiles();
+    //add validations here	
+
+    $this->logger->addInfo("Inserting blog ". $blogDetails["title"] ." into database .. ");
+    $blogTemp["id"] = 0;
+    $blogTemp["title"] = $blogDetails["title"];
+    $blogTemp["short_description"] = $blogDetails["description"];
+    $blogTemp["content"] = $blogDetails["content"];
+    
+    $blogTemp["visible"] = $blogDetails["visible"];
+	
+    $string = $blogTemp["title"];
+	$imageno = 1;
+	$path = "";
+    foreach ($file as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$blogTemp["image_path"] = $path;
+	    }
+	   
+    }
+ 	$blog = new BlogEntity($blogTemp);
+    $this->logger->addInfo("Created object for blog ". $blog->getTitle() .".. ");
+
+    $blogMapper = new BlogMapper($this->db);
+    $isCreated = $blogMapper->save($blog);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created product {$blog->getTitle()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
+/*
+	Change Images
+ */
+$app->post('/timeline', function (Request $request, Response $response, $args){
+	$imagesTargetPath = "images/timeline/";
+    $file = $request->getUploadedFiles();
+    	
+    //add validations here	
+    $imagesUploaded = array();
+    $isCreated = false;
+    foreach ($file as $key => $value) {
+    	$string = "slide-show-". $key ."-low";
+		
+    	$this->logger->addInfo("Inserting timeline image number ". $key ." into 
+    	filesystem .. ");
+		$path = "";
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = null;
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }else if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$isCreated =true;
+	    	$imagesUploaded["image"][$key] = $string;
+	    }
+	   
+    }
+ 	
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot upload image .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully uploaded images {". json_encode($imagesUploaded)."} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+$app->post('/ourrecentwork', function (Request $request, Response $response, $args){
+	$imagesTargetPath = "images/recent/";
+    $file = $request->getUploadedFiles();
+    	
+    //add validations here	
+    $imagesUploaded = array();
+    $isCreated = false;
+    foreach ($file as $key => $value) {
+    	$string = "showcase". $key;
+		
+    	$this->logger->addInfo("Inserting timeline image number ". $key ." into 
+    	filesystem .. ");
+		$path = "";
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to nothing
+	    $string = preg_replace("/[\s_]/", "", $string);
+
+	    $ext = null;
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }else if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$isCreated =true;
+	    	$imagesUploaded["image"][$key] = $string;
+	    }
+	   
+    }
+ 	
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot upload image .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully uploaded images {". json_encode($imagesUploaded)."} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
+$app->post('/showcase', function (Request $request, Response $response, $args){
+	$imagesTargetPath = "images/showcase/";
+    $file = $request->getUploadedFiles();
+    	
+    //add validations here	
+    $imagesUploaded = array();
+    $isCreated = false;
+    foreach ($file as $key => $value) {
+    	$string = "block". $key;
+		
+    	$this->logger->addInfo("Inserting timeline image number ". $key ." into 
+    	filesystem .. ");
+		$path = "";
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to nothing
+	    $string = preg_replace("/[\s_]/", "", $string);
+
+	    $ext = null;
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }else if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$isCreated =true;
+	    	$imagesUploaded["image"][$key] = $string;
+	    }
+	   
+    }
+ 	
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot upload image .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully uploaded images {". json_encode($imagesUploaded)."} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
+/*
+	Motifs Section
+ */
+
+$app->get('/motifs', function (Request $request, Response $response) {
+	$this->logger->addInfo(" Request Recieved for listing of motifs .. ");
+	$motifMapper = new MotifMapper($this->db);
+	$result = array();
+	$data = $motifMapper->getMotifs();
+	if (isset($data) ) {
+		$this->logger->addInfo("Motifs Retrived .. ");
+		
+		foreach ($data as $key) {
+
+			$motif["id"] = $key->getId();
+			$motif["name"] = $key->getName();
+			$motif["description"] = $key->getDescription();
+			$motif["motif_path"] = $key->getMotifPath();
+			$result["motifs"][$key->getId()] = $motif;
+		}
+	
+		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "cannot process request contact your administrator";
+	return $response->withJson($result,200);
+});
+$app->get('/motif/{id}', function (Request $request, Response $response, $args){
+    $motifid = $args["id"];
+    $this->logger->addInfo(" Fetching motif for ". $motifid ." id.. ");
+
+    $motifMapper = new MotifMapper($this->db);
+	$result = array();
+	$data = $motifMapper->getMotifById($motifid);
+	
+	if (isset($data) ) {
+		$this->logger->addInfo("Motif Retrived .. ");
+
+		$motif["id"] = $data->getId();
+		$motif["name"] = $data->getName();
+		$motif["description"] = $data->getDescription();
+		$motif["motif_path"] = $data->getMotifPath();
+		
+		$result ["motif"] = $motif;
+
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data for ". $motifid ." id .. ");
+	$result["error"] = "cannot process request contact your administrator";
+
+    return $response;
+});
+$app->post('/motif/add', function (Request $request, Response $response, $args){
+	$imagesTargetPath = "images/motifs/";
+    $motifDetails = $request->getParsedBody();
+    $file = $request->getUploadedFiles();
+    	
+    //add validations here	
+
+    $this->logger->addInfo("Inserting botif ". $motifDetails["name"] ." into database .. ");
+    $motifTemp["id"] = 0;
+    $motifTemp["name"] = $motifDetails["name"];
+    $motifTemp["description"] = $motifDetails["description"];
+    
+	
+    $string = $motifTemp["name"];
+	$imageno = 1;
+	$path = "";
+    foreach ($file as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$motifTemp["motif_path"] = $path;
+	    }
+	   
+    }
+ 	$motif = new MotifEntity($motifTemp);
+    $this->logger->addInfo("Created object for motif ". $motif->getName() .".. ");
+
+    $motifMapper = new MotifMapper($this->db);
+    $isCreated = $motifMapper->save($motif);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully added motif {$motif->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
 
 
 $app->post('/orders', function (Request $request, Response $response, $args){

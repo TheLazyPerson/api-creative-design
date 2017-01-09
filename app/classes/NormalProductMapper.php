@@ -34,6 +34,21 @@ class NormalProductMapper extends Mapper
 		$results = new NormalProductEntity($row);
 		return $results;
 	}
+	public function getImagesOfProductsById($id){
+		$results = array();
+		$sql = "SELECT * FROM `images` WHERE `product_id` ={$id} AND `product_type` = 1";
+		$result = mysql_query($sql);
+
+        if (!$result){
+            die("Database Query Failed: ". mysql_error());
+
+        }
+        
+		while ( $row = mysql_fetch_array($result)) {
+			$results[] = new ImageEntity($row);
+		} 
+		return $results;
+	}
 
 	public function getFeaturedProducts(){
 
@@ -60,7 +75,6 @@ class NormalProductMapper extends Mapper
 	}
 
 	public function setProductId($name){
-		
 		$sql = "SELECT id FROM `normal_products` WHERE `name`='{$name}' ORDER BY id DESC LIMIT 1";
 		$result = mysql_query($sql);
 		$output = mysql_fetch_array($result);
