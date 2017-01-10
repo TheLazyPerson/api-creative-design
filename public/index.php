@@ -93,6 +93,103 @@ $app->get('/testsqlconnection', function(Request $request, Response $response) {
 	
    	return $response->withJson($result);
 });
+
+/* 
+	Pattern Overlay Section 
+*/
+
+$app->get('/patterns', function (Request $request, Response $response) {
+	$this->logger->addInfo(" Request Recieved for listing of patterns .. ");
+	$patternMapper = new PatternMapper($this->db);
+	$result = array();
+	$data = $patternMapper->getPatterns();
+	if (isset($data) ) {
+		$this->logger->addInfo("Pattern's Retrived .. ");
+		
+		foreach ($data as $key) {
+			
+			$pattern["id"] = $key->getId();
+			$pattern["name"] = $key->getName();
+			$pattern["pattern_path"] = $key->getPatternPath();
+		
+			$result ["patterns"][$key->getId()] = $pattern;
+			
+		}
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
+
+
+
+$app->post('/pattern/add', function (Request $request, Response $response, $args){
+   	$imagesTargetPath = "images/patterns/";
+    $patternDetails = $request->getParsedBody();
+    $file = $request->getUploadedFiles();
+    	
+    //add validations here	
+
+    $this->logger->addInfo("Inserting pattern ". $patternDetails["name"] ." into database .. ");
+    $patternTemp["id"] = 0;
+    $patternTemp["name"] = $patternDetails["name"];
+    
+	
+    $string = $patternTemp["name"];
+	$imageno = 1;
+	$path = "";
+    foreach ($file as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$patternTemp["pattern_path"] = $path;
+	    }
+	   
+    }
+ 	$pattern = new PatternEntity($patternTemp);
+    $this->logger->addInfo("Created object for pattern ". $pattern->getName() .".. ");
+
+    $motifMapper = new PatternMapper($this->db);
+    $isCreated = $motifMapper->save($pattern);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully added pattern {$pattern->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
+
 /*
 	Category Section
 
