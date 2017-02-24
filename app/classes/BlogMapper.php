@@ -16,6 +16,22 @@ class BlogMapper extends Mapper
 			$results[] = new BlogEntity($row);
 		} 
 		return $results;
+	}
+
+	public function getBlogsForHome(){
+		$sql = "SELECT id,title,short_description,content,image_path,DATE_FORMAT(date_added,\"%M %d,%Y\") as released ,visible FROM blog ORDER BY id DESC LIMIT 4";
+		$result = mysql_query($sql);
+
+        if (!$result){
+            die("Database Query Failed: ". mysql_error());
+        }
+        $results = [];
+		while ( $row = mysql_fetch_array($result)) {
+			$blog = new BlogEntity($row);
+			$blog->setReleased($row['released']);
+			$results[] = $blog;
+		} 
+		return $results;
 		
 	}
 

@@ -11,6 +11,7 @@ class BlogEntity
     protected $content;
     protected $imagePath;
     protected $visible;
+    protected $released;
 
     function __construct(array $data)
     {
@@ -47,6 +48,13 @@ class BlogEntity
 
     public function isVisible() {
         return $this->visible;
+    }
+    public function getReleased() {
+        return $this->released;
+    }
+
+    public function setReleased($released) {
+        $this->released = $released;
     }
 
 
