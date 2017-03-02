@@ -4,7 +4,7 @@ class NormalProductMapper extends Mapper
 {
 	protected $insertedProductId = "";
 	public function getProducts(){
-		$sql = "SELECT n1.id, n1.name, n1.description, n1.addtional_information, n1.notes, n1.length, n1.height, n1.depth, n1.weight ,c1.name as category, s1.name as subcategory ,m1.name as material, n1.cod, n1.price, n1.status, n1.featured FROM `normal_products` n1 LEFT JOIN materials m1 ON n1.material=m1.id LEFT JOIN categories c1 on n1.category=c1.id LEFT JOIN subcategories s1 on n1.subcategory=s1.id ORDER BY id DESC";
+		$sql = "SELECT n1.id, n1.name, n1.description, n1.addtional_information, n1.notes, n1.length, n1.height, n1.depth, n1.weight ,c1.name as category, s1.name as subcategory ,m1.name as material, n1.cod, n1.price, n1.status, n1.featured FROM `normal_products` n1 LEFT JOIN materials m1 ON n1.material=m1.id LEFT JOIN categories c1 on n1.category=c1.id LEFT JOIN subcategories s1 on n1.subcategory=s1.id WHERE n1.status = '1' ORDER BY id DESC";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -21,7 +21,7 @@ class NormalProductMapper extends Mapper
 
 	public function getProductById($id){
 
-		$sql = "SELECT n1.id, n1.name, n1.description, n1.addtional_information, n1.notes, n1.length, n1.height, n1.depth, n1.weight,c1.name as category, s1.name as subcategory ,m1.name as material, n1.cod, n1.price, n1.status, n1.featured FROM `normal_products` n1 LEFT JOIN materials m1 ON n1.material=m1.id LEFT JOIN categories c1 on n1.category=c1.id LEFT JOIN subcategories s1 ON n1.subcategory=s1.id WHERE n1.id ={$id}";
+		$sql = "SELECT n1.id, n1.name, n1.description, n1.addtional_information, n1.notes, n1.length, n1.height, n1.depth, n1.weight,c1.name as category, s1.name as subcategory ,m1.name as material, n1.cod, n1.price, n1.status, n1.featured FROM `normal_products` n1 LEFT JOIN materials m1 ON n1.material=m1.id LEFT JOIN categories c1 on n1.category=c1.id LEFT JOIN subcategories s1 ON n1.subcategory=s1.id WHERE n1.id ={$id} AND n1.status = '1'";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -51,7 +51,7 @@ class NormalProductMapper extends Mapper
 
 	public function getFeaturedProducts(){
 
-		$sql = "SELECT n1.id, n1.name, n1.description, n1.addtional_information, n1.notes, n1.length, n1.height, n1.depth, n1.weight, c1.name as category, s1.name as subcategory,m1.name as material, n1.cod, n1.price, n1.status, n1.featured FROM `normal_products` n1 LEFT JOIN materials m1 ON n1.material=m1.id LEFT JOIN categories c1 on n1.category=c1.id LEFT JOIN subcategories s1 on n1.subcategory=s1.id WHERE n1.featured = '1' ORDER BY id DESC";
+		$sql = "SELECT n1.id, n1.name, n1.description, n1.addtional_information, n1.notes, n1.length, n1.height, n1.depth, n1.weight, c1.name as category, s1.name as subcategory,m1.name as material, n1.cod, n1.price, n1.status, n1.featured FROM `normal_products` n1 LEFT JOIN materials m1 ON n1.material=m1.id LEFT JOIN categories c1 on n1.category=c1.id LEFT JOIN subcategories s1 on n1.subcategory=s1.id WHERE n1.featured = '1' AND n1.status = '1' ORDER BY id DESC";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -85,7 +85,6 @@ class NormalProductMapper extends Mapper
 		return $this->insertedProductId;
 	}
 
-
 	public function save(NormalProductEntity $product){
 		
 		$sql = "INSERT INTO `normal_products` (`id`, `name`, `description`, `addtional_information`,`notes`, `length`, `height`, `depth`, `weight`, `category`,`subcategory`, `material`, `cod`,  `price`, `date_added`, `last_modified`,  `status`, `featured` ,`tax_class_id`) VALUES (NULL,'{$product->getName()}', '{$product->getDescription()}', '{$product->getAddtionalInformation()}','{$product->getNotes()}','{$product->getLength()}', '{$product->getHeight()}','{$product->getDepth()}','{$product->getWeight()}','{$product->getCategory()}','{$product->getSubCategory()}','{$product->getMaterial()}', '{$product->getCOD()}', '{$product->getPrice()}', NOW(), NOW(), '1', '{$product->getFeatured()}' ,'1')";
@@ -93,6 +92,22 @@ class NormalProductMapper extends Mapper
 		$result = mysql_query($sql);
 		return $result;
 	}
+	public function update(NormalProductEntity $product){
+		
+		$sql = "INSERT INTO `normal_products` (`id`, `name`, `description`, `addtional_information`,`notes`, `length`, `height`, `depth`, `weight`, `category`,`subcategory`, `material`, `cod`,  `price`, `date_added`, `last_modified`,  `status`, `featured` ,`tax_class_id`) VALUES (NULL,'{$product->getName()}', '{$product->getDescription()}', '{$product->getAddtionalInformation()}','{$product->getNotes()}','{$product->getLength()}', '{$product->getHeight()}','{$product->getDepth()}','{$product->getWeight()}','{$product->getCategory()}','{$product->getSubCategory()}','{$product->getMaterial()}', '{$product->getCOD()}', '{$product->getPrice()}', NOW(), NOW(), '1', '{$product->getFeatured()}' ,'1')";
+		
+		$result = mysql_query($sql);
+		return $result;
+	}
+	public function delete($id){
+		
+		$sql = "UPDATE `normal_products` SET `status`= 0 WHERE `id`= {$id}";
+		
+		$result = mysql_query($sql);
+		return $result;
+	}
+
+	
 
 
 }	

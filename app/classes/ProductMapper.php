@@ -6,7 +6,7 @@ class ProductMapper extends Mapper
 	protected $insertedProductId = "";
 
 	public function setProductId($name){
-		$sql = "SELECT id FROM `products` WHERE `name`='{$name}' ORDER BY id DESC LIMIT 1";
+		$sql = "SELECT id FROM `products` WHERE `name`='{$name}'  ORDER BY id DESC LIMIT 1";
 		$result = mysql_query($sql);
 		$output = mysql_fetch_array($result);
 		$this->insertedProductId = $output["id"];
@@ -18,7 +18,7 @@ class ProductMapper extends Mapper
 	}
 
 	public function getProducts(){
-		$sql = "SELECT p1.id, p1.name, p1.description, p1.addtional_information, p1.notes,  p1.max_characters, p1.per_char_charge, p1.max_font_size, p1.price_after_max_font_size, m1.name as 'material', c1.name as 'category', s1.name as 'subcategory', p1.cod, p1.letter_type, p1.nameplate_used, p1.fitting_place, p1.length, p1.height, p1.weight, p1.depth, p1.trending, p1.font_effect, p1.price, p1.date_added, p1.last_modified, p1.date_available, p1.status, p1.tax_class_id FROM products p1 LEFT JOIN materials m1 ON p1.material= m1.id LEFT JOIN categories c1 ON p1.category = c1.id LEFT JOIN subcategories s1 ON p1.subcategory = s1.id ORDER BY id DESC";
+		$sql = "SELECT p1.id, p1.name, p1.description, p1.addtional_information, p1.notes,  p1.max_characters, p1.per_char_charge, p1.max_font_size, p1.price_after_max_font_size, m1.name as 'material', c1.name as 'category', s1.name as 'subcategory', p1.cod, p1.letter_type, p1.nameplate_used, p1.fitting_place, p1.length, p1.height, p1.weight, p1.depth, p1.trending, p1.font_effect, p1.price, p1.date_added, p1.last_modified, p1.date_available, p1.status, p1.tax_class_id FROM products p1 LEFT JOIN materials m1 ON p1.material= m1.id LEFT JOIN categories c1 ON p1.category = c1.id LEFT JOIN subcategories s1 ON p1.subcategory = s1.id WHERE p1.status = '1' ORDER BY id DESC";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -118,11 +118,9 @@ class ProductMapper extends Mapper
 	}
 
 
-
-
 	public function getProductByCategoryId($id){
 
-		$sql = "SELECT p1.id, p1.name, p1.description, p1.addtional_information, p1.notes, p1.max_characters, p1.per_char_charge, m1.name as 'material', c1.name as 'category', p1.cod, p1.letter_type, p1.nameplate_used, p1.fitting_place, p1.length, p1.height, p1.weight, p1.depth, p1.trending, p1.price, p1.date_added, p1.last_modified, p1.date_available, p1.status, p1.tax_class_id FROM products p1 LEFT JOIN materials m1 ON p1.material= m1.id LEFT JOIN categories c1 ON p1.category = c1.id  WHERE p1.id ={$id}";
+		$sql = "SELECT p1.id, p1.name, p1.description, p1.addtional_information, p1.notes, p1.max_characters, p1.per_char_charge, m1.name as 'material', c1.name as 'category', p1.cod, p1.letter_type, p1.nameplate_used, p1.fitting_place, p1.length, p1.height, p1.weight, p1.depth, p1.trending, p1.price, p1.date_added, p1.last_modified, p1.date_available, p1.status, p1.tax_class_id FROM products p1 LEFT JOIN materials m1 ON p1.material= m1.id LEFT JOIN categories c1 ON p1.category = c1.id  WHERE p1.id ={$id} AND p1.status = '1'";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -151,7 +149,7 @@ class ProductMapper extends Mapper
 	}
 	public function getTrendingProducts(){
 
-		$sql = "SELECT p1.id, p1.name, p1.description, p1.addtional_information, p1.notes,  p1.max_characters, p1.per_char_charge, p1.max_font_size, p1.price_after_max_font_size, m1.name as 'material', c1.name as 'category', s1.name as 'subcategory', p1.cod, p1.letter_type, p1.nameplate_used, p1.fitting_place, p1.length, p1.height, p1.weight, p1.depth, p1.trending, p1.font_effect, p1.price, p1.date_added, p1.last_modified, p1.date_available, p1.status, p1.tax_class_id FROM products p1 LEFT JOIN materials m1 ON p1.material= m1.id LEFT JOIN categories c1 ON p1.category = c1.id LEFT JOIN subcategories s1 ON p1.subcategory = s1.id  WHERE p1.trending = '1' ORDER BY p1.id DESC";
+		$sql = "SELECT p1.id, p1.name, p1.description, p1.addtional_information, p1.notes,  p1.max_characters, p1.per_char_charge, p1.max_font_size, p1.price_after_max_font_size, m1.name as 'material', c1.name as 'category', s1.name as 'subcategory', p1.cod, p1.letter_type, p1.nameplate_used, p1.fitting_place, p1.length, p1.height, p1.weight, p1.depth, p1.trending, p1.font_effect, p1.price, p1.date_added, p1.last_modified, p1.date_available, p1.status, p1.tax_class_id FROM products p1 LEFT JOIN materials m1 ON p1.material= m1.id LEFT JOIN categories c1 ON p1.category = c1.id LEFT JOIN subcategories s1 ON p1.subcategory = s1.id  WHERE p1.trending = '1' AND p1.status = '1' ORDER BY p1.id DESC";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -165,6 +163,7 @@ class ProductMapper extends Mapper
 		return $results;
 		
 	}
+	
 	public function saveImage(ImageEntity $image){
 
 		$sql = "INSERT INTO `images` (`images_id`, `path`, `product_id`, `product_type`) VALUES (NULL, '{$image->getPath()}', '{$image->getProductId()}', '{$image->getProductType()}')";
@@ -204,6 +203,13 @@ class ProductMapper extends Mapper
 		$result = mysql_query($sql);
 		return $result;
 	}
+
+	public function delete($id){
+		$sql = "UPDATE `products` SET `status`= 0 WHERE `id`= {$id}";
+		$result = mysql_query($sql);
+		return $result;
+	}
+
 
 }	
 

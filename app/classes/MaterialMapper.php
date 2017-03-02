@@ -3,7 +3,7 @@
 class MaterialMapper extends Mapper
 {
 	public function getMaterials(){
-		$sql = "SELECT * FROM materials";
+		$sql = "SELECT * FROM materials WHERE status='1'";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -20,7 +20,7 @@ class MaterialMapper extends Mapper
 
 	public function getMaterialById($id){
 
-		$sql = "SELECT * FROM `materials` WHERE id ={$id}";
+		$sql = "SELECT * FROM `materials` WHERE id ={$id} AND status='1'";
 		$result = mysql_query($sql);
 
         if (!$result){
@@ -33,12 +33,16 @@ class MaterialMapper extends Mapper
 		return $results;
 	}
 	
-	
-
 	public function save(MaterialEntity $material){
 		
-		$sql = "INSERT INTO `materials` (`id`, `name`, `description`, `date_added`, `last_updated`) VALUES (NULL, '{$material->getName()}', '{$material->getDescription()}', NOW(), NOW());";
-		
+		$sql = "INSERT INTO `materials` (`id`, `name`, `description`, `status`, `date_added`, `last_updated`) VALUES (NULL, '{$material->getName()}', '{$material->getDescription()}', '1', NOW(), NOW());";
+
+		$result = mysql_query($sql);
+		return $result;
+	}
+
+	public function delete($id){
+		$sql = "UPDATE `materials` SET `status`= 0 WHERE `id`= {$id}";
 		$result = mysql_query($sql);
 		return $result;
 	}

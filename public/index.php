@@ -202,6 +202,92 @@ $app->post('/pattern/add', function (Request $request, Response $response, $args
 	return $response->withJson($result,201);
 });
 
+
+$app->post('/pattern/update/{id}', function (Request $request, Response $response, $args){
+   	$imagesTargetPath = "images/patterns/";
+    $patternDetails = $request->getParsedBody();
+    $file = $request->getUploadedFiles();
+    	
+    //add validations here	
+
+    $this->logger->addInfo("updating pattern ". $patternDetails["name"] ." into database .. ");
+    $patternTemp["id"] = 0;
+    $patternTemp["name"] = $patternDetails["name"];
+    
+    $string = $patternTemp["name"];
+	$imageno = 1;
+	$path = "";
+    foreach ($file as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$patternTemp["pattern_path"] = $path;
+	    }
+	   
+    }
+ 	$pattern = new PatternEntity($patternTemp);
+    $this->logger->addInfo("Created object for pattern ". $pattern->getName() .".. ");
+
+    $motifMapper = new PatternMapper($this->db);
+    $isCreated = $motifMapper->save($pattern);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully added pattern {$pattern->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+$app->get('/pattern/delete/{id}', function (Request $request, Response $response, $args){
+	
+	$patternId = $args["id"];	
+
+    $this->logger->addInfo("Deleting pattern ". $patternId ." from database .. ");
+    
+    $patternMapper = new PatternMapper($this->db);
+    $isCreated = $patternMapper->delete($patternId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted pattern  .".$patternId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
+
 /*
 	Category Section
  */
@@ -301,24 +387,96 @@ $app->get('/category/{id}', function (Request $request, Response $response, $arg
 	$result["error"] = "1";
 	return $response->withJson($result,200);
 });
-$app->delete('/category/{id}', function (Request $request, Response $response, $args) {
+$app->get('/category/detail/{id}', function (Request $request, Response $response, $args) {
 
     $categoryid = $args["id"];
 
-	$this->logger->addInfo(" Request Recieved for listing of Sub categories for category .. ");
+	$this->logger->addInfo(" Request Recieved for listing of category for category .. ");
 	$categoryMapper = new CategoryMapper($this->db);
 	$result = array();
-	$data = $categoryMapper->deleteCategory($categoryid);
+	$data = $categoryMapper->getCategoryById($categoryid);
 	if (isset($data) ) {
-		$this->logger->addInfo("Sub Categories Retrived .. ");
+		$this->logger->addInfo("Category information Retrived .. ");
+		
+		$category["id"] = $data->getId();
+		$category["name"] = $data->getName();
+		$category["description"] = $data->getDescription();
+	
+		$result ["category"] = $category;
+		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
+
+$app->post('/category/update/{id}', function (Request $request, Response $response, $args) {
+
+	$categoryDetails = $request->getParsedBody();
+    $categoryid = $args["id"];
+    $categoryDetails["id"]=$categoryid;
+	$category = new CategoryEntity($categoryDetails);
+    $this->logger->addInfo("Created object for category ". $category->getName() .".. ");
+    
+    $categoryMapper = new CategoryMapper($this->db);
+    $isCreated = $categoryMapper->update($category);
+    
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created testimonial {$category->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
+$app->get('/category/delete/{id}', function (Request $request, Response $response, $args){
+	
+	$categoryId = $args["id"];
+
+    $this->logger->addInfo("Deleting Category ". $categoryId ." from database .. ");
+    
+    $categoryMapper = new CategoryMapper($this->db);
+    $isCreated = $categoryMapper->deleteCategory($categoryId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted category  .".$categoryId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
+/*
+	Testimonial Section
+ */
+
+$app->get('/testimonials', function (Request $request, Response $response) {
+	$this->logger->addInfo(" Request Recieved for listing of testimonails .. ");
+	$testimonialMapper = new TestimonialMapper($this->db);
+	$result = array();
+	$data = $testimonialMapper->getTestimonials();
+	if (isset($data) ) {
+		$this->logger->addInfo("Testimonials Retrived .. ");
 		
 		foreach ($data as $key) {
+
+			$id = $key->getId();
+			$testimonial["id"] = $key->getId();
+			$testimonial["message"] = $key->getMessage();
+			$testimonial["author"] = $key->getAuthor();
+			$testimonial["place"] = $key->getPlace();
+			$testimonial["date"] = $key->getDate();
 			
-			$subcategory["id"] = $key->getId();
-			$subcategory["name"] = $key->getName();
-			$subcategory["description"] = $key->getDescription();
-		
-			$result ["subcategories"][$key->getId()] = $subcategory;
+			$result ["testimonials"][$key->getId()] = $testimonial;
 			
 		}
    		return $response->withJson($result,200);
@@ -327,6 +485,109 @@ $app->delete('/category/{id}', function (Request $request, Response $response, $
 	$result["error"] = "1";
 	return $response->withJson($result,200);
 });
+
+$app->get('/testimonials/{id}', function (Request $request, Response $response, $args) {
+
+    $testimonialId = $args["id"];
+
+	$this->logger->addInfo(" Request Recieved for listing of Testimonial.. ");
+	$testimonialMapper = new TestimonialMapper($this->db);
+	$result = array();
+	$data = $testimonialMapper->getTestimonialsById($testimonialId);
+
+	if (isset($data) ) {
+		$this->logger->addInfo("Sub Categories Retrived .. ");
+		
+		
+			$testimonial["id"] = $data->getId();
+			$testimonial["message"] = $data->getMessage();
+			$testimonial["author"] = $data->getAuthor();
+			$testimonial["place"] = $data->getPlace();
+			$testimonial["date"] = $data->getDate();
+		
+			$result ["testimonial"][$data->getId()] = $testimonial;
+			
+		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
+
+$app->post('/testimonials/update/{id}', function (Request $request, Response $response, $args) {
+
+	$testimonialDetails = $request->getParsedBody();
+    $testimonialId = $args["id"];
+    $testimonialDetails["id"]=$testimonialId;
+	$testimonial = new TestimonialEntity($testimonialDetails);
+    $this->logger->addInfo("Created object for testimonial ". $testimonial->getAuthor() .".. ");
+    
+    $testimonialMapper = new TestimonialMapper($this->db);
+    $isCreated = $testimonialMapper->update($testimonial);
+   
+    
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created testimonial {$testimonial->getAuthor()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+$app->post('/testimonials/add', function (Request $request, Response $response, $args){
+	
+    $testimonialDetails = $request->getParsedBody();
+    	
+    //add validations here	
+
+    $this->logger->addInfo("Inserting Testimonial ". $testimonialDetails["author"] ." into database .. ");
+    $testimonialDetails["id"] = 0;
+    
+    $testimonial = new TestimonialEntity($testimonialDetails);
+    $this->logger->addInfo("Created object for testimonial ". $testimonial->getAuthor() .".. ");
+    
+    $testimonialMapper = new TestimonialMapper($this->db);
+    $isCreated = $testimonialMapper->save($testimonial);
+   	
+    
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created testimonial {$testimonial->getAuthor()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+$app->get('/testimonials/delete/{id}', function (Request $request, Response $response, $args){
+	
+	$testimonialId = $args["id"];
+
+    //add validations here	
+
+    $this->logger->addInfo("Deleting Testimonial ". $testimonialId ." from database .. ");
+    
+    $testimonialMapper = new TestimonialMapper($this->db);
+    $isCreated = $testimonialMapper->delete($testimonialId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted testimonial  .".$testimonialId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
 /*
 	Subcategory Section
  */
@@ -384,6 +645,30 @@ $app->post('/subcategory/add', function (Request $request, Response $response, $
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
+
+
+$app->get('/subcategory/delete/{id}', function (Request $request, Response $response, $args){
+	
+	$subcategoryId = $args["id"];
+
+    //add validations here	
+
+    $this->logger->addInfo("Deleting SubCategory ". $subcategoryId ." from database .. ");
+    
+    $categoryMapper = new CategoryMapper($this->db);
+    $isCreated = $categoryMapper->deleteSubCategory($subcategoryId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted subcategory  .".$subcategoryId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
 
 
 /* 
@@ -556,6 +841,57 @@ $app->post('/material/add', function (Request $request, Response $response, $arg
 	return $response->withJson($result,201);
 });
 
+$app->post('/material/update/{id}', function (Request $request, Response $response, $args){
+	
+
+	$materialId = $args["id"];
+    $materialDetails = $request->getParsedBody();
+    	
+    //add validations here	
+
+    $this->logger->addInfo("Inserting Material ". $materialDetails["name"] ." into database .. ");
+    $materialDetails["id"] = 0;
+    
+    $material = new MaterialEntity($materialDetails);
+    $this->logger->addInfo("Created object for material ". $material->getName() .".. ");
+    
+    $materialMapper = new MaterialMapper($this->db);
+    $isCreated = $materialMapper->save($material);
+   
+    
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created material {$material->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+$app->get('/material/delete/{id}', function (Request $request, Response $response, $args){
+	
+	$materialId = $args["id"];
+
+    	
+
+    $this->logger->addInfo("Deleting material ". $materialId ." from database .. ");
+    
+    $materialMapper = new MaterialMapper($this->db);
+    $isCreated = $materialMapper->delete($materialId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted material  .".$materialId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
 
 /*
 	Product Section
@@ -605,6 +941,28 @@ $app->get('/products/normal', function (Request $request, Response $response) {
 	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
 	$result["error"] = "1";
 	return $response->withJson($result,200);
+});
+
+
+$app->get('/products/normal/delete/{id}', function (Request $request, Response $response, $args) {
+	$productid = $args["id"];
+
+    //add validations here	
+
+    $this->logger->addInfo("Deleting product ". $productid ." from database .. ");
+    
+    $productMapper = new NormalProductMapper($this->db);
+    $isCreated = $productMapper->delete($productid);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot delete data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted product  .".$productid.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
 });
 
 $app->get('/products/featured', function (Request $request, Response $response) {
@@ -713,12 +1071,14 @@ $app->get('/products/nameplate', function (Request $request, Response $response)
 				foreach ($patterns as $patternTemp) {
 					$patternid = $patternTemp->getPattern();
 					$pattern = $patternMapper->getPatternById($patternid);
-
-					$product["patterns"][$i]["id"] = $pattern->getId();
-					$product["patterns"][$i]["name"] = $pattern->getName();
-					$product["patterns"][$i]["pattern_path"] = $pattern->getPatternPath();
-
-					$i++;
+					if (is_bool($pattern) === false) {
+						$product["patterns"][$i]["id"] = $pattern->getId();
+						$product["patterns"][$i]["name"] = $pattern->getName();
+						$product["patterns"][$i]["pattern_path"] = $pattern->getPatternPath();
+						$i++;
+					}
+					
+					
 				}
 			}
 			if (!empty($motifs)) {
@@ -726,13 +1086,14 @@ $app->get('/products/nameplate', function (Request $request, Response $response)
 				foreach ($motifs as $motifTemp) {
 					$motifid = $motifTemp->getMotifId();
 					$motif = $motifMapper->getMotifById($motifid);
+					if (is_bool($motif) === false) {
+						$product["motifs"][$i]["id"] = $motif->getId();
+						$product["motifs"][$i]["name"] = $motif->getName();
+						$product["motifs"][$i]["motif_path"] = $motif->getMotifPath();
+						$product["motifs"][$i]["description"] = $motif->getDescription();
 
-					$product["motifs"][$i]["id"] = $motif->getId();
-					$product["motifs"][$i]["name"] = $motif->getName();
-					$product["motifs"][$i]["motif_path"] = $motif->getMotifPath();
-					$product["motifs"][$i]["description"] = $motif->getDescription();
-
-					$i++;
+						$i++;
+					}
 				}
 			}
 
@@ -798,39 +1159,54 @@ $app->get('/products/trending', function (Request $request, Response $response) 
 			$product["trending"] = $key->getTrending();
 			$product["font_effect"] = $key->getFontEffect();
 
-			$i = 1;
-			foreach ($images as $image) {
-				$product["images"][$i] = $image->getPath();
-				$i++;
+			$images = array_filter($images);
+			if (!empty($images)) {
+				$i = 1;
+				foreach ($images as $image) {
+					$product["images"][$i] = $image->getPath();
+					$i++;
+				}
 			}
-			$i = 1;
-			foreach ($colors as $color) {
-				$product["colors"][$i] = $color->getColorHashCode();
-				$i++;
+			if (!empty($colors)) {
+				$i = 1;
+				foreach ($colors as $color) {
+					$product["colors"][$i] = $color->getColorHashCode();
+					$i++;
+				}
 			}
-			$i = 1;
-			foreach ($patterns as $key) {
-				$patternid = $key->getPattern();
-				$pattern = $patternMapper->getPatternById($patternid);
-
-				$product["patterns"][$i]["id"] = $pattern->getId();
-				$product["patterns"][$i]["name"] = $pattern->getName();
-				$product["patterns"][$i]["pattern_path"] = $pattern->getPatternPath();
-
-				$i++;
+			if (!empty($patterns)) {
+				$i = 1;
+				foreach ($patterns as $patternTemp) {
+					$patternid = $patternTemp->getPattern();
+					$pattern = $patternMapper->getPatternById($patternid);
+					if (is_bool($pattern) === false) {
+						$product["patterns"][$i]["id"] = $pattern->getId();
+						$product["patterns"][$i]["name"] = $pattern->getName();
+						$product["patterns"][$i]["pattern_path"] = $pattern->getPatternPath();
+						$i++;
+					}
+					
+					
+				}
 			}
-			$i = 1;
-			foreach ($motifs as $key) {
-				$motifid = $key->getMotifId();
-				$motif = $motifMapper->getMotifById($motifid);
+			if (!empty($motifs)) {
+				$i = 1;
+				foreach ($motifs as $motifTemp) {
+					$motifid = $motifTemp->getMotifId();
+					$motif = $motifMapper->getMotifById($motifid);
+					if (is_bool($motif) === false) {
+						$product["motifs"][$i]["id"] = $motif->getId();
+						$product["motifs"][$i]["name"] = $motif->getName();
+						$product["motifs"][$i]["motif_path"] = $motif->getMotifPath();
+						$product["motifs"][$i]["description"] = $motif->getDescription();
 
-				$product["motifs"][$i]["id"] = $motif->getId();
-				$product["motifs"][$i]["name"] = $motif->getName();
-				$product["motifs"][$i]["motif_path"] = $motif->getMotifPath();
-				$product["motifs"][$i]["description"] = $motif->getDescription();
-
-				$i++;
+						$i++;
+					}
+				}
 			}
+
+			
+			
 			$result ["products"][$key->getId()] = $product;
 		}
 	
@@ -911,6 +1287,78 @@ $app->post('/product/normal', function (Request $request, Response $response, $a
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
+$app->post('/product/normal/update/{id}', function (Request $request, Response $response, $args){
+	$productid = $args["id"];
+	$imagesTargetPath = "images/normal/";
+    $productDetails = $request->getParsedBody();
+    
+    $files = $request->getUploadedFiles();
+    	
+    //add validations here	
+
+    $this->logger->addInfo("Updating product ". $productDetails["name"] ." into database .. ");
+    $productDetails["id"] = 0;
+	$productDetails["status"] = 0;
+	$product = new NormalProductEntity($productDetails);
+    $this->logger->addInfo("Created object for product ". $product->getName() .".. ");
+
+    $productMapper = new NormalProductMapper($this->db);
+    $isCreated = $productMapper->save($product);
+	//validation check remaining
+    $productMapper->setProductId($product->getName());
+	$string = $product->getName();
+	$imageno = 1;
+	$path = "";
+    foreach ($files as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$imagedata["images_id"] = "0";
+	    	$imagedata["path"] = $path;
+	    	$imagedata["product_id"] = $productMapper->getProductId();
+	    	$imagedata["product_type"] = 1;
+	    	$image = new ImageEntity($imagedata);
+	    	$productMapper->saveImage($image);
+	    }
+	    $imageno++;
+    }
+ 
+    
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created product {$product->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
 
 $app->post('/product/nameplate', function (Request $request, Response $response, $args){
 
@@ -1023,6 +1471,26 @@ $app->post('/product/nameplate', function (Request $request, Response $response,
 	return $response->withJson($result,201);
 });
 
+$app->get('/product/nameplate/delete/{id}', function (Request $request, Response $response, $args){
+
+	$productid = $args["id"];
+
+    $this->logger->addInfo("Deleting nameplate ". $productid ." from database .. ");
+    
+    $productMapper = new ProductMapper($this->db);
+    $isCreated = $productMapper->delete($productid);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot delete data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted nameplate  .".$productid.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,200);
+
+});
 
 $app->get('/productnormal/{id}', function (Request $request, Response $response, $args){
     $productid = $args["id"];
@@ -1102,6 +1570,7 @@ $app->get('/product/nameplate/{id}', function (Request $request, Response $respo
 		$product["cod"] = $data->getCOD();
 		$product["letter_type"] = $data->getLetterType();
 		$product["fitting_place"] = $data->getFittingPlace();
+		$product["depth"] = $data->getDepth();
 		$product["length"] = $data->getLength();
 		$product["height"] = $data->getHeight();
 		$product["weight"] = $data->getWeight();
@@ -1164,6 +1633,8 @@ $app->get('/product/nameplate/{id}', function (Request $request, Response $respo
 
 
 
+
+
 /*
 	Product based on categories
 */
@@ -1204,6 +1675,83 @@ $app->get('/products/categories/{categoryid}/{subcategoryid}', function (Request
 	$result["error"] = "1";
 	return $response->withJson($result,200);
 });
+
+
+/* Contact Us */
+$app->post('/contactus/add', function (Request $request, Response $response, $args){
+
+	$contactusDetails = $request->getParsedBody();
+
+    $this->logger->addInfo("Requesting Design for  ". $contactusDetails["name"] ." into database .. ");
+    $contactusDetails["id"] = 0;
+    $contact = new ContactUsEntity($contactusDetails);
+    $this->logger->addInfo("Created object for contact ". $contact->getName() .".. ");
+
+    $contactusMapper = new ContactUsMapper($this->db);
+    $isCreated = $contactusMapper->save($contact);
+
+     if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully added requested contact us {$contact->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+
+});
+
+$app->get('/contactus', function (Request $request, Response $response) {
+	$this->logger->addInfo(" Request Recieved for listing of motifs .. ");
+	$contactusMapper = new ContactUsMapper($this->db);
+	$result = array();
+	$data = $contactusMapper->getContactInformation();
+	if (isset($data) ) {
+		$this->logger->addInfo("Contact Information Retrived .. ");
+		
+		foreach ($data as $key) {
+			$contactus["id"] = $key->getId();
+			$contactus["name"] = $key->getName();
+			$contactus["email"] = $key->getEmail();
+			$contactus["subject"] = $key->getSubject();
+			$contactus["message"] = $key->getMessage();
+			$result["contactus"][$key->getId()] = $contactus;
+		}		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "cannot process request contact your administrator";
+	return $response->withJson($result,200);
+});
+
+$app->get('/contactus/{id}', function (Request $request, Response $response, $args){
+    $contactusid = $args["id"];
+    $this->logger->addInfo(" Fetching requested contact information for ". $contactusid ." id.. ");
+
+    $contactusMapper = new ContactUsMapper($this->db);
+	$result = array();
+	$data = $contactusMapper->getContactInformationById($designid);
+	
+	if (isset($data) ) {
+		$this->logger->addInfo("Motif Retrived .. ");
+		$contactus["id"] = $key->getId();
+		$contactus["name"] = $key->getName();
+		$contactus["email"] = $key->getEmail();
+		$contactus["subject"] = $key->getSubject();
+		$contactus["message"] = $key->getMessage();
+		
+		$result ["contactus"] = $contactus;
+
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data for ". $motifid ." id .. ");
+	$result["error"] = "cannot process request contact your administrator";
+
+    return $response;
+});
+
+
 
 
 /*
@@ -1426,6 +1974,7 @@ $app->get('/blog/home', function (Request $request, Response $response) {
 	$result["error"] = "cannot process request contact your administrator";
 	return $response->withJson($result,200);
 });
+
 $app->get('/blog/{id}', function (Request $request, Response $response, $args){
     $blogid = $args["id"];
     $this->logger->addInfo(" Fetching blog for ". $blogid ." id.. ");
@@ -1444,7 +1993,6 @@ $app->get('/blog/{id}', function (Request $request, Response $response, $args){
 		$blog["image_path"] = $data->getImagePath();
 		$blog["visible"] = $data->isVisible();
 		
-		
 		$result ["blog"] = $blog;
 
    		return $response->withJson($result,200);
@@ -1453,6 +2001,26 @@ $app->get('/blog/{id}', function (Request $request, Response $response, $args){
 	$result["error"] = "cannot process request contact your administrator";
 
     return $response;
+});
+$app->get('/blog/delete/{id}', function (Request $request, Response $response, $args){
+
+	$blogId = $args["id"];
+
+    $this->logger->addInfo("Deleting blog ". $blogId ." from database .. ");
+    
+    $blogMapper = new BlogMapper($this->db);
+    $isCreated = $blogMapper->delete($blogId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot delete data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted blog  .".$blogId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,200);
+
 });
 $app->post('/blog/add', function (Request $request, Response $response, $args){
 
@@ -1510,6 +2078,75 @@ $app->post('/blog/add', function (Request $request, Response $response, $args){
     $blogMapper = new BlogMapper($this->db);
     $isCreated = $blogMapper->save($blog);
 
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created product {$blog->getTitle()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+$app->post('/blog/update/{id}', function (Request $request, Response $response, $args){
+	$blogId = $args["id"];
+	$imagesTargetPath = "images/blog/";
+    $blogDetails = $request->getParsedBody();
+    $file = $request->getUploadedFiles();
+    //add validations here	
+
+    $this->logger->addInfo("Inserting blog ". $blogDetails["title"] ." into database .. ");
+    $blogTemp["id"] = $blogId;
+    $blogTemp["title"] = $blogDetails["title"];
+    $blogTemp["short_description"] = $blogDetails["description"];
+    $blogTemp["content"] = $blogDetails["content"];
+    
+    $blogTemp["image_path"] = "";
+    $blogTemp["visible"] = $blogDetails["visible"];
+	
+    $string = $blogTemp["title"];
+	$imageno = 1;
+	$path = "";
+
+    foreach ($file as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.uniqid().$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$blogTemp["image_path"] = $path;
+	    }
+	   
+    }
+	
+ 	$blog = new BlogEntity($blogTemp);
+    $this->logger->addInfo("Created object for blog ". $blog->getTitle() .".. ");
+
+    $blogMapper = new BlogMapper($this->db);
+    $isCreated = $blogMapper->update($blog);
     if ( !$isCreated ) {
     	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
 		$result["error"] = "1";
@@ -1888,7 +2525,27 @@ $app->post('/motif/add', function (Request $request, Response $response, $args){
 	return $response->withJson($result,201);
 });
 
+$app->get('/motif/delete/{id}', function (Request $request, Response $response, $args){
+	
+	$motifId = $args["id"];
 
+    //add validations here	
+
+    $this->logger->addInfo("Deleting Motif ". $motifId ." from database .. ");
+    
+    $motifMapper = new MotifMapper($this->db);
+    $isCreated = $motifMapper->delete($motifId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted motif  .".$motifId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
 
 
 
