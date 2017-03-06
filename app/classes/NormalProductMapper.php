@@ -6,7 +6,6 @@ class NormalProductMapper extends Mapper
 	public function getProducts(){
 		$sql = "SELECT n1.id, n1.name, n1.description, n1.addtional_information, n1.notes, n1.length, n1.height, n1.depth, n1.weight ,c1.name as category, s1.name as subcategory ,m1.name as material, n1.cod, n1.price, n1.status, n1.featured FROM `normal_products` n1 LEFT JOIN materials m1 ON n1.material=m1.id LEFT JOIN categories c1 on n1.category=c1.id LEFT JOIN subcategories s1 on n1.subcategory=s1.id WHERE n1.status = '1' ORDER BY id DESC";
 		$result = mysql_query($sql);
-
         if (!$result){
             die("Database Query Failed: ". mysql_error());
         }
@@ -68,7 +67,13 @@ class NormalProductMapper extends Mapper
 	
 	public function saveImage(ImageEntity $image){
 
-		$sql = "INSERT INTO `images` (`images_id`, `path`, `product_id`, `product_type`) VALUES (NULL, '{$image->getPath()}', '{$image->getProductId()}', '{$image->getProductType()}')";
+		$sql = "INSERT INTO `images` (`images_id`, `path`, `product_id`, `image_number`,`product_type`) VALUES (NULL, '{$image->getPath()}', '{$image->getProductId()}', '{$image->getImageNumber()}' , '{$image->getProductType()}')";
+		$result = mysql_query($sql);
+		return $result;
+	}
+	public function updateImage(ImageEntity $image){
+
+		$sql = "UPDATE `images` SET `path`='{$image->getPath()}' WHERE `product_id`='{$image->getProductId()}' AND `image_number`='{$image->getImageNumber()}' AND `product_type`='{$image->getProductType()}'";
 		$result = mysql_query($sql);
 		return $result;
 	}
@@ -94,11 +99,13 @@ class NormalProductMapper extends Mapper
 	}
 	public function update(NormalProductEntity $product){
 		
-		$sql = "INSERT INTO `normal_products` (`id`, `name`, `description`, `addtional_information`,`notes`, `length`, `height`, `depth`, `weight`, `category`,`subcategory`, `material`, `cod`,  `price`, `date_added`, `last_modified`,  `status`, `featured` ,`tax_class_id`) VALUES (NULL,'{$product->getName()}', '{$product->getDescription()}', '{$product->getAddtionalInformation()}','{$product->getNotes()}','{$product->getLength()}', '{$product->getHeight()}','{$product->getDepth()}','{$product->getWeight()}','{$product->getCategory()}','{$product->getSubCategory()}','{$product->getMaterial()}', '{$product->getCOD()}', '{$product->getPrice()}', NOW(), NOW(), '1', '{$product->getFeatured()}' ,'1')";
+		$sql = "UPDATE `normal_products` SET `name`='{$product->getName()}',`description`='{$product->getDescription()}',`addtional_information`='{$product->getAddtionalInformation()}',`notes`='{$product->getNotes()}',`length`='{$product->getLength()}',`height`='{$product->getHeight()}',`depth`='{$product->getDepth()}',`weight`='{$product->getWeight()}',`category`='{$product->getCategory()}',`subcategory`='{$product->getSubCategory()}',`material`='{$product->getMaterial()}',`cod`='{$product->getCOD()}',`price`='{$product->getPrice()}',`last_modified`=NOW(),`featured`='{$product->getFeatured()}' WHERE `id`='{$product->getId()}' ";
 		
 		$result = mysql_query($sql);
 		return $result;
 	}
+
+	
 	public function delete($id){
 		
 		$sql = "UPDATE `normal_products` SET `status`= 0 WHERE `id`= {$id}";

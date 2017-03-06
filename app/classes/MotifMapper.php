@@ -43,6 +43,23 @@ class MotifMapper extends Mapper
 		return $result;
 	}
 
+	public function update(MotifEntity $motif){
+		$sql ="";
+		if ($motif->getMotifPath() == "") {
+			$sql = "UPDATE `motif` SET `name`='{$motif->getName()}', `description`='{$motif->getDescription()}',`last_modified`=NOW() WHERE `id`={$motif->getId()}";
+		
+		}else{
+			
+			$sql = "UPDATE `motif` SET `name`='{$motif->getName()}',`motif_path`='{$motif->getMotifPath()}',`description`='{$motif->getDescription()}',`last_modified`=NOW() WHERE `id`={$motif->getId()}";
+		
+		}
+		
+		$result = mysql_query($sql);
+		return $result;
+
+	}
+
+
 
 	public function delete($id){
 		$sql = "UPDATE `motif` SET `status`= 0 WHERE `id`= {$id}";

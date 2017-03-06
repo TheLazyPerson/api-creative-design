@@ -9,6 +9,7 @@ class ImageEntity
 	protected $path;
 	protected $product_id;
     protected $product_type;
+    protected $image_number;
 
 	function __construct(array $data)
 	{
@@ -18,6 +19,7 @@ class ImageEntity
             $this->path = $data['path'];
             $this->product_id = $data['product_id'];
             $this->product_type = $data['product_type'];
+            $this->image_number = $data['image_number'];
         }
 	}
 
@@ -35,6 +37,9 @@ class ImageEntity
 
     public function getProductType() {
         return $this->product_type;
+    }
+    public function getImageNumber() {
+        return $this->image_number;
     }
     
 }

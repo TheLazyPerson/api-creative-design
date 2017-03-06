@@ -49,15 +49,16 @@ class CategoryMapper extends Mapper
 	}
 	public function getSubCategoryById($id){
 
-		$sql = "SELECT * FROM `subcategories` WHERE id ={$id} AND status='1'";
+		$sql = "SELECT * FROM `subcategories` WHERE id={$id} AND status='1'";
 		$result = mysql_query($sql);
 
         if (!$result){
             die("Database Query Failed: ". mysql_error());
 
         }
-        
+
 		$row = mysql_fetch_array($result);
+
 		$results = new SubCategoryEntity($row);
 		return $results;
 	}
@@ -96,6 +97,20 @@ class CategoryMapper extends Mapper
 		return $result;
 	}
 
+	public function updateCategory(CategoryEntity $category){
+		
+		$sql = "UPDATE `categories` SET `name`='{$category->getName()}',`description`='{$category->getDescription()}',`status`='1',`last_modified`= NOW() WHERE id={$category->getId()}";
+		
+		$result = mysql_query($sql);
+		return $result;
+	}
+	public function updateSubCategory(SubCategoryEntity $subcategory){
+		
+		$sql = "UPDATE `subcategories` SET `name`='{$subcategory->getName()}',`description`='{$subcategory->getDescription()}',`parent`='{$subcategory->getParent()}',`status`='1',`last_modified`=NOW() WHERE id={$subcategory->getId()}";
+		
+		$result = mysql_query($sql);
+		return $result;
+	}
 
 	public function deleteCategory($id){
 		$sql = "UPDATE `categories` SET `status`= 0 WHERE `id`= {$id}";

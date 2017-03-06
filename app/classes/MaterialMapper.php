@@ -40,7 +40,13 @@ class MaterialMapper extends Mapper
 		$result = mysql_query($sql);
 		return $result;
 	}
+	public function update(MaterialEntity $material){
+		
+		$sql = "UPDATE `materials` SET `name`='{$material->getName()}',`description`='{$material->getDescription()}',`last_updated`=NOW() WHERE id='{$material->getId()}'";
 
+		$result = mysql_query($sql);
+		return $result;
+	}
 	public function delete($id){
 		$sql = "UPDATE `materials` SET `status`= 0 WHERE `id`= {$id}";
 		$result = mysql_query($sql);

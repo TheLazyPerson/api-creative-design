@@ -204,6 +204,7 @@ $app->post('/pattern/add', function (Request $request, Response $response, $args
 
 
 $app->post('/pattern/update/{id}', function (Request $request, Response $response, $args){
+   	$patternid = $args["id"];
    	$imagesTargetPath = "images/patterns/";
     $patternDetails = $request->getParsedBody();
     $file = $request->getUploadedFiles();
@@ -211,11 +212,12 @@ $app->post('/pattern/update/{id}', function (Request $request, Response $respons
     //add validations here	
 
     $this->logger->addInfo("updating pattern ". $patternDetails["name"] ." into database .. ");
-    $patternTemp["id"] = 0;
+    $patternTemp["id"] = $patternid;
     $patternTemp["name"] = $patternDetails["name"];
     
     $string = $patternTemp["name"];
 	$imageno = 1;
+	$patternTemp["pattern_path"] ="";
 	$path = "";
     foreach ($file as $key => $value) {
 
@@ -239,7 +241,7 @@ $app->post('/pattern/update/{id}', function (Request $request, Response $respons
 	    	$ext = ".png";
 	    }
 	    if (isset($string) && isset($ext)) {
-	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$path = $imagesTargetPath.$string.uniqid().$ext;
 	    	$value->moveTo($path);
 	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
 	    	
@@ -252,8 +254,8 @@ $app->post('/pattern/update/{id}', function (Request $request, Response $respons
  	$pattern = new PatternEntity($patternTemp);
     $this->logger->addInfo("Created object for pattern ". $pattern->getName() .".. ");
 
-    $motifMapper = new PatternMapper($this->db);
-    $isCreated = $motifMapper->save($pattern);
+    $patternMapper = new PatternMapper($this->db);
+    $isCreated = $patternMapper->update($pattern);
 
     if ( !$isCreated ) {
     	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
@@ -420,7 +422,7 @@ $app->post('/category/update/{id}', function (Request $request, Response $respon
     $this->logger->addInfo("Created object for category ". $category->getName() .".. ");
     
     $categoryMapper = new CategoryMapper($this->db);
-    $isCreated = $categoryMapper->update($category);
+    $isCreated = $categoryMapper->updateCategory($category);
     
     if ( !$isCreated ) {
     	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
@@ -428,7 +430,7 @@ $app->post('/category/update/{id}', function (Request $request, Response $respon
 		return $response->withJson($result,200);
     }
 
-    $this->logger->addInfo(" Successfully Created testimonial {$category->getName()} .. ");
+    $this->logger->addInfo("Successfully Created testimonial {$category->getName()} .. ");
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
@@ -600,7 +602,7 @@ $app->get('/subcategories', function (Request $request, Response $response) {
 		$this->logger->addInfo("Categories Retrived .. ");
 		
 		foreach ($data as $key) {
-			;
+			
 			$subcategory["id"] = $key->getId();
 			$subcategory["name"] = $key->getName();
 			$subcategory["description"] = $key->getDescription();
@@ -645,7 +647,49 @@ $app->post('/subcategory/add', function (Request $request, Response $response, $
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
+$app->get('/subcategory/detail/{id}', function (Request $request, Response $response, $args) {
 
+    $subcategoryid = $args["id"];
+
+	$this->logger->addInfo(" Request Recieved for listing of category for category .. ");
+	$categoryMapper = new CategoryMapper($this->db);
+	$result = array();
+	$data = $categoryMapper->getSubCategoryById($subcategoryid);
+	if (isset($data) ) {
+		$this->logger->addInfo("SubCategory information Retrived .. ");
+		$subcategory["id"] = $data->getId();
+		$subcategory["name"] = $data->getName();
+		$subcategory["description"] = $data->getDescription();
+		$subcategory["parent"] = $data->getParent();
+		$result ["subcategory"] = $subcategory;
+		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
+
+$app->post('/subcategory/update/{id}', function (Request $request, Response $response, $args) {
+
+	$subcategoryDetails = $request->getParsedBody();
+    $subcategoryid = $args["id"];
+    $subcategoryDetails["id"]=$subcategoryid;
+	$subcategory = new SubCategoryEntity($subcategoryDetails);
+    $this->logger->addInfo("Created object for subcategory ". $subcategory->getName() .".. ");
+    $categoryMapper = new CategoryMapper($this->db);
+    $isCreated = $categoryMapper->updateSubCategory($subcategory);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo("Successfully Updated Category {$subcategory->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
 
 $app->get('/subcategory/delete/{id}', function (Request $request, Response $response, $args){
 	
@@ -798,11 +842,11 @@ $app->get('/materials', function (Request $request, Response $response) {
 		
 		foreach ($data as $key) {
 			
-			$category["id"] = $key->getId();
-			$category["name"] = $key->getName();
-			$category["description"] = $key->getDescription();
+			$material["id"] = $key->getId();
+			$material["name"] = $key->getName();
+			$material["description"] = $key->getDescription();
 		
-			$result ["materials"][$key->getId()] = $category;
+			$result ["materials"][$key->getId()] = $material;
 			
 		}
    		return $response->withJson($result,200);
@@ -840,32 +884,47 @@ $app->post('/material/add', function (Request $request, Response $response, $arg
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
+$app->get('/material/detail/{id}', function (Request $request, Response $response, $args) {
 
-$app->post('/material/update/{id}', function (Request $request, Response $response, $args){
+    $materialid = $args["id"];
+
+	$this->logger->addInfo(" Request Recieved for listing details of material .. ");
+	$materialMapper = new MaterialMapper($this->db);
+	$result = array();
+	$data = $materialMapper->getMaterialById($materialid);
+	if (isset($data) ) {
+		$this->logger->addInfo("Material information Retrived .. ");
+		
+		$material["id"] = $data->getId();
+		$material["name"] = $data->getName();
+		$material["description"] = $data->getDescription();
 	
+		$result ["material"] = $material;
+		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
 
-	$materialId = $args["id"];
-    $materialDetails = $request->getParsedBody();
-    	
-    //add validations here	
+$app->post('/material/update/{id}', function (Request $request, Response $response, $args) {
 
-    $this->logger->addInfo("Inserting Material ". $materialDetails["name"] ." into database .. ");
-    $materialDetails["id"] = 0;
-    
-    $material = new MaterialEntity($materialDetails);
-    $this->logger->addInfo("Created object for material ". $material->getName() .".. ");
-    
+	$materialDetails = $request->getParsedBody();
+    $materialid = $args["id"];
+    $materialDetails["id"]=$materialid;
+	$material = new MaterialEntity($materialDetails);
+    $this->logger->addInfo("Created object for Updating Material ". $material->getName() .".. ");
     $materialMapper = new MaterialMapper($this->db);
-    $isCreated = $materialMapper->save($material);
-   
-    
+    $isCreated = $materialMapper->update($material);
+
     if ( !$isCreated ) {
     	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
 		$result["error"] = "1";
 		return $response->withJson($result,200);
     }
 
-    $this->logger->addInfo(" Successfully Created material {$material->getName()} .. ");
+    $this->logger->addInfo("Successfully Updated Material {$material->getName()} .. ");
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
@@ -1227,7 +1286,7 @@ $app->post('/product/normal', function (Request $request, Response $response, $a
 
     $this->logger->addInfo("Inserting product ". $productDetails["name"] ." into database .. ");
     $productDetails["id"] = 0;
-	$productDetails["status"] = 0;
+	$productDetails["status"] = 1;
 	$product = new NormalProductEntity($productDetails);
     $this->logger->addInfo("Created object for product ". $product->getName() .".. ");
 
@@ -1260,7 +1319,7 @@ $app->post('/product/normal', function (Request $request, Response $response, $a
 	    	$ext = ".png";
 	    }
 	    if (isset($string) && isset($ext)) {
-	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$path = $imagesTargetPath.$string.uniqid().$ext;
 	    	$value->moveTo($path);
 	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
 	    	
@@ -1270,6 +1329,7 @@ $app->post('/product/normal', function (Request $request, Response $response, $a
 	    	$imagedata["path"] = $path;
 	    	$imagedata["product_id"] = $productMapper->getProductId();
 	    	$imagedata["product_type"] = 1;
+	    	$imagedata["image_number"] = $imageno;
 	    	$image = new ImageEntity($imagedata);
 	    	$productMapper->saveImage($image);
 	    }
@@ -1293,31 +1353,23 @@ $app->post('/product/normal/update/{id}', function (Request $request, Response $
     $productDetails = $request->getParsedBody();
     
     $files = $request->getUploadedFiles();
-    	
-    //add validations here	
-
     $this->logger->addInfo("Updating product ". $productDetails["name"] ." into database .. ");
-    $productDetails["id"] = 0;
+    $productDetails["id"] = $productid;
 	$productDetails["status"] = 0;
 	$product = new NormalProductEntity($productDetails);
     $this->logger->addInfo("Created object for product ". $product->getName() .".. ");
 
     $productMapper = new NormalProductMapper($this->db);
-    $isCreated = $productMapper->save($product);
+    $isCreated = $productMapper->update($product);
 	//validation check remaining
-    $productMapper->setProductId($product->getName());
+    $productMapper->setProductId($productid);
 	$string = $product->getName();
 	$imageno = 1;
 	$path = "";
     foreach ($files as $key => $value) {
-
-    	//Lower case everything
 	    $string = strtolower($string);
-	    //Make alphanumeric (removes all other characters)
 	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
-	    //Clean up multiple dashes or whitespaces
 	    $string = preg_replace("/[\s-]+/", " ", $string);
-	    //Convert whitespaces and underscore to dash
 	    $string = preg_replace("/[\s_]/", "-", $string);
 
 	    $ext = "";
@@ -1331,7 +1383,7 @@ $app->post('/product/normal/update/{id}', function (Request $request, Response $
 	    	$ext = ".png";
 	    }
 	    if (isset($string) && isset($ext)) {
-	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$path = $imagesTargetPath.$string.uniqid().$ext;
 	    	$value->moveTo($path);
 	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
 	    	
@@ -1339,10 +1391,11 @@ $app->post('/product/normal/update/{id}', function (Request $request, Response $
 	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
 	    	$imagedata["images_id"] = "0";
 	    	$imagedata["path"] = $path;
-	    	$imagedata["product_id"] = $productMapper->getProductId();
+	    	$imagedata["product_id"] = $productid;
 	    	$imagedata["product_type"] = 1;
+	    	$imagedata["image_number"] = $key;
 	    	$image = new ImageEntity($imagedata);
-	    	$productMapper->saveImage($image);
+	    	$productMapper->updateImage($image);
 	    }
 	    $imageno++;
     }
@@ -1354,7 +1407,7 @@ $app->post('/product/normal/update/{id}', function (Request $request, Response $
 		return $response->withJson($result,200);
     }
 
-    $this->logger->addInfo(" Successfully Created product {$product->getName()} .. ");
+    $this->logger->addInfo(" Successfully updated product {$product->getName()} .. ");
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
@@ -1577,50 +1630,65 @@ $app->get('/product/nameplate/{id}', function (Request $request, Response $respo
 		$product["price"] = $data->getPrice();
 		$product["trending"] = $data->getTrending();
 		$product["font_effect"] = $data->getFontEffect();
-		$i = 1;
-		foreach ($images as $image) {
-			$product["images"][$i] = $image->getPath();
-			$i++;
-		}
-		$i = 1;
-		foreach ($colors as $color) {
-			$product["colors"][$i] = $color->getColorHashCode();
-			$i++;
-		}
-		$i = 1;
-		foreach ($patterns as $key) {
-			$patternid = $key->getPattern();
-			$pattern = $patternMapper->getPatternById($patternid);
+		$images = array_filter($images);
+			if (!empty($images)) {
+				$i = 1;
+				foreach ($images as $image) {
+					$product["images"][$i] = $image->getPath();
+					$i++;
+				}
+			}
+			if (!empty($colors)) {
+				$i = 1;
+				foreach ($colors as $color) {
+					$product["colors"][$i] = $color->getColorHashCode();
+					$i++;
+				}
+			}
+			if (!empty($patterns)) {
+				$i = 1;
+				foreach ($patterns as $patternTemp) {
+					$patternid = $patternTemp->getPattern();
+					$pattern = $patternMapper->getPatternById($patternid);
+					if (is_bool($pattern) === false) {
+						$product["patterns"][$i]["id"] = $pattern->getId();
+						$product["patterns"][$i]["name"] = $pattern->getName();
+						$product["patterns"][$i]["pattern_path"] = $pattern->getPatternPath();
+						$i++;
+					}
+					
+					
+				}
+			}
+			if (!empty($motifs)) {
+				$i = 1;
+				foreach ($motifs as $motifTemp) {
+					$motifid = $motifTemp->getMotifId();
+					$motif = $motifMapper->getMotifById($motifid);
+					if (is_bool($motif) === false) {
+						$product["motifs"][$i]["id"] = $motif->getId();
+						$product["motifs"][$i]["name"] = $motif->getName();
+						$product["motifs"][$i]["motif_path"] = $motif->getMotifPath();
+						$product["motifs"][$i]["description"] = $motif->getDescription();
 
-			$product["patterns"][$i]["id"] = $pattern->getId();
-			$product["patterns"][$i]["name"] = $pattern->getName();
-			$product["patterns"][$i]["pattern_path"] = $pattern->getPatternPath();
+						$i++;
+					}
+				}
+			}
 
-			$i++;
-		}
-		$i = 1;
-		foreach ($motifs as $key) {
-			$motifid = $key->getMotifId();
-			$motif = $motifMapper->getMotifById($motifid);
+			if (count($fonts) > 0) {
+				$i = 1;
+				foreach ($fonts as $fontTemp) {
+					$fontid = $fontTemp->getFontId();
+					$font = $fontMapper->getFontById($fontid);
 
-			$product["motifs"][$i]["id"] = $motif->getId();
-			$product["motifs"][$i]["name"] = $motif->getName();
-			$product["motifs"][$i]["motif_path"] = $motif->getMotifPath();
-			$product["motifs"][$i]["description"] = $motif->getDescription();
-
-			$i++;
-		}
-
-		$i = 1;
-		foreach ($fonts as $key) {
-			$fontid = $key->getFontId();
-			$font = $fontMapper->getFontById($fontid);
-
-			$product["fonts"][$i]["id"] = $font->getId();
-			$product["fonts"][$i]["name"] = $font->getName();
-			$product["fonts"][$i]["filepath"] = $font->getFilePath();
-			$i++;
-		}
+					$product["fonts"][$i]["id"] = $font->getId();
+					$product["fonts"][$i]["name"] = $font->getName();
+					$product["fonts"][$i]["filepath"] = $font->getFilePath();
+					$i++;
+				}
+			}
+			
 		$result ["product"] = $product;
 
    		return $response->withJson($result,200);
@@ -2460,6 +2528,9 @@ $app->get('/motif/{id}', function (Request $request, Response $response, $args){
 
     return $response;
 });
+
+
+
 $app->post('/motif/add', function (Request $request, Response $response, $args){
 	$imagesTargetPath = "images/motifs/";
     $motifDetails = $request->getParsedBody();
@@ -2524,6 +2595,74 @@ $app->post('/motif/add', function (Request $request, Response $response, $args){
 	$result["success"] = "1";
 	return $response->withJson($result,201);
 });
+$app->post('/motif/update/{id}', function (Request $request, Response $response, $args){
+   	$motifid = $args["id"];
+   	$imagesTargetPath = "images/motifs/";
+    $motifDetails = $request->getParsedBody();
+    $file = $request->getUploadedFiles();
+
+    	
+    //add validations here	
+
+ 	$this->logger->addInfo("Updating motif ". $motifDetails["name"] ." into database .. ");
+    $motifTemp["id"] = $motifid;
+    $motifTemp["name"] = $motifDetails["name"];
+    $motifTemp["description"] = $motifDetails["description"];
+    	
+    $string = $motifTemp["name"];
+	$imageno = 1;
+	$path = "";
+	$motifTemp["motif_path"] ="";
+    foreach ($file as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.uniqid().$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$motifTemp["motif_path"] = $path;
+	    }
+	   
+    }
+ 	$motif = new MotifEntity($motifTemp);
+    $this->logger->addInfo("Created object for updating motif ". $motif->getName() .".. ");
+
+    $motifMapper = new MotifMapper($this->db);
+    $isCreated = $motifMapper->update($motif);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully added motif {$motif->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
 
 $app->get('/motif/delete/{id}', function (Request $request, Response $response, $args){
 	

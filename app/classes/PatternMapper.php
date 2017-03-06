@@ -45,6 +45,19 @@ class PatternMapper extends Mapper
 		$result = mysql_query($sql);
 		return $result;
 	}
+
+	public function update(PatternEntity $pattern){
+		$sql ="";
+		if ($pattern->getPatternPath() == "") {
+			$sql = "UPDATE `patterns` SET `name`='{$pattern->getName()}' WHERE `id`='{$pattern->getId()}'";
+		}else{
+			
+			$sql = "UPDATE `patterns` SET `name`='{$pattern->getName()}',`pattern_path`='{$pattern->getPatternPath()}' WHERE `id`='{$pattern->getId()}'";
+		}
+		
+		$result = mysql_query($sql);
+		return $result;
+	}
 	public function delete($id){
 		$sql = "UPDATE `patterns` SET `status`= 0 WHERE `id`= {$id}";
 		$result = mysql_query($sql);
