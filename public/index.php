@@ -4,6 +4,7 @@ use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 require '../vendor/autoload.php';
 require '../app/classes/constants.php';
+require '../app/mailer/class.phpmailer.php';
 
 spl_autoload_register(function ($classname) {
     require ("../app/classes/" . $classname . ".php");
@@ -78,9 +79,63 @@ $app->post('/login', function(Request $request, Response $response) {
    	return $response->withJson($result);
 });
 
+$app->post('/verify', function(Request $request, Response $response) {
+	$userDetails = $request->getParsedBody();
+   	return $response->withJson($result);
+});
+
 $app->post('/signup', function(Request $request, Response $response) {
-	//signup functionality
 	
+    $userDetails = $request->getParsedBody();
+    $userEmail = $userDetails["email_address"];
+    
+    $customerMapper = new CustomerMapper($this->db);
+	
+    $result = [];
+    if ($customerMapper->checkIfUserExist($userEmail)) {
+    	$result["error"] = "1";
+    	$result["error_message"] = "<div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button> <strong>Sorry !</strong>  email allready exists , Please Try another one </div>";
+    }
+
+    $userDetails["id"] = 0;
+    $userDetails["token_code"] = $customerMapper->generateToken();
+    $customerEntity = new CustomerEntity($userDetails);
+    $isCreated = $customerMapper->registerNewUser($customerEntity);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $id = $customerMapper->lasdID();  
+   	$key = base64_encode($id);
+   	$id = $key;
+
+   	//sending mail to user
+   	$message = "     
+      Hello $uname,
+      <br /><br />
+      Welcome to Kalakruti!<br/>
+      To complete your registration  please , just click following link<br/>
+      <br /><br />
+      <a href='http://www.kalakrutiindia.com/verify.php?id=$id&code=$code'>Click HERE to Activate :)</a>
+      <br /><br />
+      Thanks,";
+      
+    $subject = "Confirm Registration | Kalakruti India";
+    if ($customerMapper->sendEmailToUser($email,$message,$subject)) {
+    	$result["success"] = "1";
+    	$result["success_message"] = " <div class='alert alert-success'><button class='close' data-dismiss='alert'>&times;</button><strong>Success!</strong>  We've sent an email to $email. Please click on the confirmation link in the email to create your account. </div>";
+    } else {
+    	$result["error"] = "1";
+    	$result["error_message"] = "<div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button> <strong>Internal Server Error</strong> Please Try Again! We're Sorry For Inconvinience </div>";
+    }
+    $this->logger->addInfo(" Successfully created new user {$customer->getFirstName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+
+
    	return $response->withJson($result);
 });
 
@@ -471,6 +526,32 @@ $app->get('/testimonials', function (Request $request, Response $response) {
 		
 		foreach ($data as $key) {
 
+			$id = $key->getId();
+			$testimonial["id"] = $key->getId();
+			$testimonial["message"] = $key->getMessage();
+			$testimonial["author"] = $key->getAuthor();
+			$testimonial["place"] = $key->getPlace();
+			$testimonial["date"] = $key->getDate();
+			
+			$result ["testimonials"][$key->getId()] = $testimonial;
+			
+		}
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
+
+$app->get('/testimonials/footer', function (Request $request, Response $response) {
+	$this->logger->addInfo(" Request Recieved for listing of testimonails .. ");
+	$testimonialMapper = new TestimonialMapper($this->db);
+	$result = array();
+	$data = $testimonialMapper->getLatestTestimonials();
+	if (isset($data) ) {
+		$this->logger->addInfo("Testimonials Retrived .. ");
+		
+		foreach ($data as $key) {
 			$id = $key->getId();
 			$testimonial["id"] = $key->getId();
 			$testimonial["message"] = $key->getMessage();
@@ -1524,6 +1605,72 @@ $app->post('/product/nameplate', function (Request $request, Response $response,
 	return $response->withJson($result,201);
 });
 
+$app->post('/product/nameplate/update/{id}', function (Request $request, Response $response, $args){
+	$productid = $args["id"];
+	$imagesTargetPath = "images/nameplate/";
+    $productDetails = $request->getParsedBody();
+    
+    $files = $request->getUploadedFiles();
+    $this->logger->addInfo("Updating product ". $productDetails["name"] ." into database .. ");
+    $productDetails["id"] = $productid;
+	$productDetails["status"] = 0;
+	$product = new ProductEntity($productDetails);
+    $this->logger->addInfo("Created object for product ". $product->getName() .".. ");
+
+    $productMapper = new ProductMapper($this->db);
+    $isCreated = $productMapper->update($product);
+	//validation check remaining
+    $productMapper->setProductId($productid);
+	$string = $product->getName();
+	$imageno = 1;
+	$path = "";
+    foreach ($files as $key => $value) {
+	    $string = strtolower($string);
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.uniqid().$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$imagedata["images_id"] = "0";
+	    	$imagedata["path"] = $path;
+	    	$imagedata["product_id"] = $productid;
+	    	$imagedata["product_type"] = 2;
+	    	$imagedata["image_number"] = $key;
+	    	$image = new ImageEntity($imagedata);
+	    	$productMapper->updateImage($image);
+	    }
+	    $imageno++;
+    }
+ 
+    
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully updated product {$product->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+
+
 $app->get('/product/nameplate/delete/{id}', function (Request $request, Response $response, $args){
 
 	$productid = $args["id"];
@@ -1945,20 +2092,21 @@ $app->get('/cart', function (Request $request, Response $response, $args){
 	$result = array();
     if(isset($_SESSION["products"]) && count($_SESSION["products"])>0){ 
         $total = 0;
+        $items = 0;
         foreach($_SESSION["products"] as $product){ //loop though items and prepare html content
             
             //set variables to use them in HTML content below
             $productId = $product["product_id"]; 
             $productPrice = $product["product_price"];
             $productQty = $product["product_quantity"];
-            
+            $items = $items + intval($productQty);
             
             $subtotal = ($productPrice * $productQty);
             $total = ($total + $subtotal);
             $product["subtotal"] = $subtotal;
             $result["products"][$productId] = $product;
         }
-        $result["items"] = count($_SESSION["products"]);
+        $result["items"] = $items;
         $result["total"] = $total;
         
     }else{
@@ -1985,6 +2133,106 @@ $app->post('/cart/remove', function (Request $request, Response $response, $args
 	   	$result['items'] = $total_items;
 	}
     return $response->withJson($result,200);
+});
+
+/*Customer Review*/
+$app->get('/reviews', function (Request $request, Response $response) {
+	$this->logger->addInfo(" Request Recieved for listing of reviews .. ");
+	$reviewMapper = new ReviewMapper($this->db);
+	$result = array();
+	$data = $reviewMapper->getReviews();
+	if (isset($data) ) {
+		$this->logger->addInfo("Reviews Retrived .. ");
+		
+		foreach ($data as $key) {
+			$review["review_id"] = $key->getReviewId();
+			$review["product_id"] = $key->getProductId();
+			$review["product_type"] = $key->getProductType();
+			$review["comment"] = $key->getComment();
+			$review["stars"] = $key->getStars();
+			$review["email"] = $key->getEmail();
+			$review["name"] = $key->getName();
+			$result["reviews"][$key->getReviewId()] = $review;
+		}
+	
+		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "cannot process request contact your administrator";
+	return $response->withJson($result,200);
+});
+
+$app->get('/review/{id}/{type}', function (Request $request, Response $response, $args) {
+	$productid = $args["id"];
+	$producttype = $args["type"];
+	$this->logger->addInfo(" Request Recieved for listing of reviews .. ");
+	$reviewMapper = new ReviewMapper($this->db);
+	$result = array();
+	$data = $reviewMapper->getReviewsForProduct($productid,$producttype);
+	if (isset($data) ) {
+		$this->logger->addInfo("Reviews Retrived .. ");
+		foreach ($data as $key) {
+			$review["review_id"] = $key->getReviewId();
+			$review["product_id"] = $key->getProductId();
+			$review["product_type"] = $key->getProductType();
+			$review["comment"] = $key->getComment();
+			$review["stars"] = $key->getStars();
+			$review["email"] = $key->getEmail();
+			$review["name"] = $key->getName();
+			$result["reviews"][$key->getReviewId()] = $review;
+		}
+
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "cannot process request contact your administrator";
+	return $response->withJson($result,200);
+});
+
+$app->post('/review/add', function (Request $request, Response $response, $args){
+	
+    $reviewDetails = $request->getParsedBody();
+    	
+    $this->logger->addInfo("Inserting Review from ". $reviewDetails["name"] ." into database .. ");
+    $reviewDetails["review_id"] = 0;
+    
+    $review = new ReviewEntity($reviewDetails);
+    $this->logger->addInfo("Created object for review ". $review->getName() .".. ");
+    
+    $reviewMapper = new ReviewMapper($this->db);
+    $isCreated = $reviewMapper->save($review);
+   
+    
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot insert data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created review {$review->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+$app->get('/review/delete/{id}', function (Request $request, Response $response, $args){
+
+	$reviewid = $args["id"];
+
+    $this->logger->addInfo("Deleting review ". $reviewid ." from database .. ");
+    
+    $reviewMapper = new ReviewMapper($this->db);
+    $isCreated = $reviewMapper->delete($reviewid);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot delete data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted review  .".$reviewid.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,200);
+
 });
 /*
 	Blog Section
@@ -2687,7 +2935,72 @@ $app->get('/motif/delete/{id}', function (Request $request, Response $response, 
 });
 
 
+$app->post('/submitnameplatedesign', function (Request $request, Response $response, $args){
 
+	$imagesTargetPath = "images/designs/";
+    $nameplateDetails = $request->getParsedBody();
+    $file = $request->getUploadedFiles();
+    //add validations here	
+
+    $this->logger->addInfo("Inserting blog ". $blogDetails["title"] ." into database .. ");
+    $blogTemp["id"] = 0;
+    $blogTemp["title"] = $blogDetails["title"];
+    $blogTemp["short_description"] = $blogDetails["description"];
+    $blogTemp["content"] = $blogDetails["content"];
+    
+    $blogTemp["visible"] = $blogDetails["visible"];
+	
+    $string = $blogTemp["title"];
+	$imageno = 1;
+	$path = "";
+    foreach ($file as $key => $value) {
+
+    	//Lower case everything
+	    $string = strtolower($string);
+	    //Make alphanumeric (removes all other characters)
+	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+	    //Clean up multiple dashes or whitespaces
+	    $string = preg_replace("/[\s-]+/", " ", $string);
+	    //Convert whitespaces and underscore to dash
+	    $string = preg_replace("/[\s_]/", "-", $string);
+
+	    $ext = "";
+	    if ($value->getClientMediaType() == "image/jpeg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/jpg" ) {
+	    	$ext = ".jpg";
+	    }
+	    if ($value->getClientMediaType() == "image/png" ) {
+	    	$ext = ".png";
+	    }
+	    if (isset($string) && isset($ext)) {
+	    	$path = $imagesTargetPath.$string.$imageno.$ext;
+	    	$value->moveTo($path);
+	    	$this->logger->addInfo("Uploaded Image ". $string ." into filesystem at {$path} - {$key} .. ");
+	    	
+	    }
+	    if ($value->getError() == UPLOAD_ERR_OK && isset($path)) {
+	    	$blogTemp["image_path"] = $path;
+	    }
+	   
+    }
+ 	$blog = new BlogEntity($blogTemp);
+    $this->logger->addInfo("Created object for blog ". $blog->getTitle() .".. ");
+
+    $blogMapper = new BlogMapper($this->db);
+    $isCreated = $blogMapper->save($blog);
+
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully Created product {$blog->getTitle()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
 $app->post('/orders', function (Request $request, Response $response, $args){
 
     return $response;

@@ -16,7 +16,19 @@ class TestimonialMapper extends Mapper
 		} 
 		return $results;
 	}	
-	
+	public function getLatestTestimonials(){
+		$sql = "SELECT * FROM testimonials WHERE visible = 1 ORDER BY id DESC LIMIT 8";
+		$result = mysql_query($sql);
+        if (!$result){
+            die("Database Query Failed: ". mysql_error());
+        }
+        $results = [];
+		// $rows = mysql_fetch_array($result);
+		while ( $row = mysql_fetch_array($result)) {
+			$results[] = new TestimonialEntity($row);
+		} 
+		return $results;
+	}
 	public function getTestimonialsById($id){
 
 		$sql = "SELECT * FROM `testimonials` WHERE id={$id}";

@@ -6,38 +6,30 @@
 class CustomerEntity
 {
 	protected $id;
-	protected $gender;
 	protected $firstname;
 	protected $lastname;
-	protected $dob;
 	protected $email_address;
-	protected $default_address_id;
-	protected $telephone;
-	protected $fax;
+	protected $phone;
+	protected $city;
 	protected $password;
-	protected $newsletter; 
+	protected $token_code;
+
 	function __construct(array $data)
 	{
 		if (isset($data)) {
 			$this->id = $data["id"];
-			$this->gender = $data["gender"];
 			$this->firstname = $data["firstname"];
 			$this->lastname = $data["lastname"];
-			$this->dob = $data["dob"];
 			$this->email_address = $data["email_address"];
-			$this->default_address_id = $data["default_address_id"];
-			$this->telephone = $data["telephone"];
-			$this->fax = $data["fax"];
+			$this->phone = $data["phone"];
+			$this->city = $data["city"];
 			$this->password = $data["password"];
-			$this->newsletter = $data["newsletter"];
+			$this->token_code = $data["token_code"];
 		}
 	}
 
 	public function getId(){
 		return $this->id;
-	}
-	public function getGender(){
-		return $this->gender;
 	}
 	public function getFirstName(){
 		return $this->firstname;
@@ -48,23 +40,16 @@ class CustomerEntity
 	public function getEmailAddress(){
 		return $this->email_address;
 	}
-	public function getDefaultAddress(){
-		return $this->default_address_id;
+	public function getPhoneNumber(){
+		return $this->phone;
 	}
-	public function getTelephoneNumber(){
-		return $this->telephone;
-	}
-	public function getFaxNumber(){
-		return $this->fax;
+	public function getCity(){
+		return $this->city;
 	}
 	public function getPassword(){
 		return $this->password;
 	}
-	public function isSubscribedToNewsletter(){
-		if ($this->newsletter == 'y') {
-			return true;
-		} else {
-			return false
-		} 
+	public function getTokenCode(){
+		return $this->token_code;
 	}
 }
