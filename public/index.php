@@ -71,16 +71,97 @@ $app->get('/', function ($request, $response, $args) {
     return $response;
 });
 
-
-
+$app->get('/isloggedin', function(Request $request, Response $response) {
+	
+	if(isset($_SESSION['id'])){
+		$result["success"] = "1";
+		$result["name"] = $_SESSION['name'];
+		return $response->withJson($result,200);
+	}
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
+$app->post('/logout', function(Request $request, Response $response) {
+	
+	session_destroy();
+  	$_SESSION['id'] = false;
+	
+   	return $response->withJson($result,200);
+});
 $app->post('/login', function(Request $request, Response $response) {
+	$loginCredentials = $request->getParsedBody();
+    $customerMapper = new CustomerMapper($this->db);
 	
-	
+    $result = [];
+    $customer = $customerMapper->getUserDetailsByUserId($loginCredentials["username"]);
+    if (!empty($customer)) {
+    	if ($customerMapper->getUserStatusByUserId($customer->getId()) == "0") {
+    		$result["inactive"] = "1";
+    		$result["inactive_message"] = " <div class='alert alert-error'>
+			    <button class='close' data-dismiss='alert'>&times;</button>
+			    <strong>Sorry!</strong> This Account is not Activated Go to your Inbox and Activate it. </div> ";
+    		return $response->withJson($result,200);
+    	}
+    	
+    	if (password_verify($loginCredentials["password"], $customer->getPassword())) {
+    		$_SESSION['id'] = $customer->getId();
+    		$_SESSION['name'] = $customer->getFirstName(). " ". $customer->getLastName();
+    		$result["success"] = "1";
+    		return $response->withJson($result,200);
+    	}
+    }else{
+    	$result["error"] = "1";
+		$result["error_message"] = " <div class='alert alert-error'>
+      <button class='close' data-dismiss='alert'>&times;</button>
+      <strong>sorry !</strong>  Wrong Username or Password </div> ";
+		return $response->withJson($result,200);
+    }
+
    	return $response->withJson($result);
 });
 
 $app->post('/verify', function(Request $request, Response $response) {
-	$userDetails = $request->getParsedBody();
+	$verifyDetails = $request->getParsedBody();
+    $customerMapper = new CustomerMapper($this->db);
+
+    $result = [];
+	if(empty($verifyDetails['id']) && empty($verifyDetails['code'])){
+		$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+	}
+	$id = base64_decode($verifyDetails['id']);
+ 	$code = $verifyDetails['code'];
+	$customer = $customerMapper->verifyUser($id, $code);
+
+	if (!empty($customer)) {
+
+		if ($customerMapper->getUserStatus($id, $code) == "0") {
+			$customerMapper->updateUserStatus($id);
+
+			$result["success"] = "1";
+    		$result["success_message"] = " <div class='alert alert-success'> <button class='close' datata-dismiss='alert'>&times;</button> <strong>WoW !</strong>  Your Account is Now Activated : <a href='login.php'>Login here</a> </div> "; 
+
+    		return $response->withJson($result,201);
+		}else{
+			$result["error"] = "1";
+    		$result["error_message"] = " <div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button><strong>sorry !</strong>  Your Account is allready Activated : <a href='login.php'>Login here</a> </div> ";
+
+    		return $response->withJson($result,200);
+		}
+
+
+	}else{
+		$result["error"] = "1";
+    	$result["error_message"] = " <div class='alert alert-error'>
+      <button class='close' data-dismiss='alert'>&times;</button>
+      <strong>sorry !</strong>  No Account Found : <a href='signUp.php'>Signup here</a>
+      </div>
+      ";
+    	return $response->withJson($result,200);
+	}
+
+
    	return $response->withJson($result);
 });
 
@@ -93,8 +174,10 @@ $app->post('/signup', function(Request $request, Response $response) {
 	
     $result = [];
     if ($customerMapper->checkIfUserExist($userEmail)) {
+    	
     	$result["error"] = "1";
     	$result["error_message"] = "<div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button> <strong>Sorry !</strong>  email allready exists , Please Try another one </div>";
+    	return $response->withJson($result,200);
     }
 
     $userDetails["id"] = 0;
@@ -103,15 +186,18 @@ $app->post('/signup', function(Request $request, Response $response) {
     $isCreated = $customerMapper->registerNewUser($customerEntity);
 
     if ( !$isCreated ) {
+    	
     	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
 		$result["error"] = "1";
 		return $response->withJson($result,200);
     }
 
-    $id = $customerMapper->lasdID();  
+    $id = $customerMapper->getLastInsertedId(); 
+
    	$key = base64_encode($id);
    	$id = $key;
-
+   	$uname = $userDetails['firstname'];
+   	$code = $userDetails['token_code'];
    	//sending mail to user
    	$message = "     
       Hello $uname,
@@ -124,19 +210,21 @@ $app->post('/signup', function(Request $request, Response $response) {
       Thanks,";
       
     $subject = "Confirm Registration | Kalakruti India";
-    if ($customerMapper->sendEmailToUser($email,$message,$subject)) {
+    if ($customerMapper->sendEmailToUser($userEmail,$message,$subject)) {
     	$result["success"] = "1";
-    	$result["success_message"] = " <div class='alert alert-success'><button class='close' data-dismiss='alert'>&times;</button><strong>Success!</strong>  We've sent an email to $email. Please click on the confirmation link in the email to create your account. </div>";
+    	$result["success_message"] = " <div class='alert alert-success'><button class='close' data-dismiss='alert'>&times;</button><strong>Success!</strong>  We've sent an email to $userEmail. Please click on the confirmation link in the email to create your account. </div>";
+    	
+    	return $response->withJson($result,201);
     } else {
     	$result["error"] = "1";
     	$result["error_message"] = "<div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button> <strong>Internal Server Error</strong> Please Try Again! We're Sorry For Inconvinience </div>";
+    	return $response->withJson($result,200);
     }
-    $this->logger->addInfo(" Successfully created new user {$customer->getFirstName()} .. ");
+    $this->logger->addInfo(" Successfully created new user {$userDetails["firstname"]} .. ");
 	$result["success"] = "1";
+
 	return $response->withJson($result,201);
 
-
-   	return $response->withJson($result);
 });
 
 
@@ -1589,6 +1677,7 @@ $app->post('/product/nameplate', function (Request $request, Response $response,
 	    	$imagedata["path"] = $path;
 	    	$imagedata["product_id"] = $productMapper->getProductId();
 	    	$imagedata["product_type"] = 2;
+	    	$imagedata["image_number"] = $key;
 	    	$image = new ImageEntity($imagedata);
 	    	$productMapper->saveImage($image);
 	    }
@@ -1622,6 +1711,60 @@ $app->post('/product/nameplate/update/{id}', function (Request $request, Respons
 	//validation check remaining
     $productMapper->setProductId($productid);
 	$string = $product->getName();
+	$productMapper->deleteAllColorsForProductId($productid);
+	$productMapper->deleteAllMotifsForProductId($productid);
+	$productMapper->deleteAllPatternsForProductId($productid);
+	$productMapper->deleteAllFontsForProductId($productid);
+	
+	if (isset($productDetails["colors"])) {
+		$colors = json_decode($productDetails["colors"],true);
+
+		foreach ($colors as $value) {
+			$color['id'] = 0;
+            $color['product_id'] = $productid;
+            $color['color_hashcode'] = $value;
+	    	$colorEntity = new ColorEntity($color);
+	    	$productMapper->saveColor($colorEntity);
+    	}
+	}
+	if (isset($productDetails["motifs"])) {
+
+		$motifs = json_decode($productDetails["motifs"],true);
+		foreach ($motifs as  $value) {
+			$motif['id'] = 0;
+            $motif['nameplate_id'] = $productid;
+            $motif['motif_id'] = $value;
+    		
+	    	$motifEntity = new ProductMotifEntity($motif);
+	    	$productMapper->saveMotif($motifEntity);
+    	}
+	}
+	if (isset($productDetails["patterns"])) {
+		$patterns = json_decode($productDetails["patterns"],true);
+		
+		foreach ($patterns as  $value) {
+			$color['id'] = 0;
+            $color['product_id'] = $productid;
+            $color['pattern'] = $value;	
+    	
+	    	$patternEntity = new ProductPatternEntity($color);
+	    	$productMapper->savePattern($patternEntity);
+    	}
+	}
+	if (isset($productDetails["fonts"])) {
+
+		$fonts = json_decode($productDetails["fonts"],true);
+
+		foreach ($fonts as  $value) {
+			$font['id'] = 0;
+            $font['product_id'] = $productid;
+            $font['font_id'] = $value;	
+    	
+	    	$fontEntity = new ProductFontEntity($font);
+	    	$productMapper->saveFont($fontEntity);
+    	}
+	}
+
 	$imageno = 1;
 	$path = "";
     foreach ($files as $key => $value) {
@@ -1657,8 +1800,7 @@ $app->post('/product/nameplate/update/{id}', function (Request $request, Respons
 	    }
 	    $imageno++;
     }
- 
-    
+ 	
     if ( !$isCreated ) {
     	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
 		$result["error"] = "1";

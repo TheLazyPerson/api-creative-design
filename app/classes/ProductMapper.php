@@ -203,6 +203,14 @@ class ProductMapper extends Mapper
 		$result = mysql_query($sql);
 		return $result;
 	}
+	public function update(ProductEntity $product){
+		
+		$sql = "UPDATE `products` SET `name`='{$product->getName()}',`description`='{$product->getDescription()}',`addtional_information`='{$product->getAddtionalInformation()}',`notes`='{$product->getNotes()}',`max_characters`='{$product->getMaxCharacters()}',`per_char_charge`='{$product->getPerCharPriceAfterMaxCharacters()}',`max_font_size`='{$product->getMaxFontSize()}',`price_after_max_font_size`='{$product->getPerCharPriceAfterMaxFontSize()}',`material`='{$product->getMaterial()}',`category`='{$product->getCategory()}',`subcategory`='{$product->getSubCategory()}',`cod`='{$product->getCOD()}',`letter_type`='{$product->getLetterType()}',`nameplate_used`='{$product->getNameplateUsed()}',`fitting_place`='{$product->getFittingPlace()}',`length`='{$product->getLength()}',`height`='{$product->getHeight()}',`depth`='{$product->getDepth()}',`weight`='{$product->getWeight()}',`trending`='{$product->getTrending()}',`font_effect`='{$product->getFontEffect()}',`price`='{$product->getPrice()}',`last_modified`=NOW() WHERE `id` = '{$product->getId()}'";
+		
+
+		$result = mysql_query($sql);
+		return $result;
+	}
 
 	public function delete($id){
 		$sql = "UPDATE `products` SET `status`= 0 WHERE `id`= {$id}";
@@ -210,7 +218,30 @@ class ProductMapper extends Mapper
 		return $result;
 	}
 
+	public function deleteAllColorsForProductId($productid){
 
+		$sql = "DELETE FROM `product_colors` WHERE `product_id`= '{$productid}'";
+		$result = mysql_query($sql);
+		return $result;
+	}
+	public function deleteAllMotifsForProductId($productid){
+
+		$sql = "DELETE FROM `product_motif` WHERE `nameplate_id` = '{$productid}'";
+		$result = mysql_query($sql);
+		return $result;
+	}
+	public function deleteAllPatternsForProductId($productid){
+
+		$sql = "DELETE FROM `product_patterns` WHERE `product_id` = '{$productid}'";
+		$result = mysql_query($sql);
+		return $result;
+	}
+	public function deleteAllFontsForProductId($productid){
+
+		$sql = "DELETE FROM `product_fonts` WHERE `product_id` ='{$productid}'";
+		$result = mysql_query($sql);
+		return $result;
+	}
 }	
 
  
