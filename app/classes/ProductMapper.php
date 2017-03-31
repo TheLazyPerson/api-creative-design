@@ -170,6 +170,12 @@ class ProductMapper extends Mapper
 		$result = mysql_query($sql);
 		return $result;
 	}
+	public function updateImage(ImageEntity $image){
+
+		$sql = "UPDATE `images` SET `path`='{$image->getPath()}' WHERE `product_id`='{$image->getProductId()}' AND `image_number`='{$image->getImageNumber()}' AND `product_type`='{$image->getProductType()}'";
+		$result = mysql_query($sql);
+		return $result;
+	}
 
 	public function saveColor(ColorEntity $color){
 

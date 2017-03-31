@@ -1696,7 +1696,7 @@ $app->post('/product/nameplate', function (Request $request, Response $response,
 
 $app->post('/product/nameplate/update/{id}', function (Request $request, Response $response, $args){
 	$productid = $args["id"];
-	$imagesTargetPath = "images/nameplate/";
+	$imagesTargetPath = "images/nameplates/";
     $productDetails = $request->getParsedBody();
     
     $files = $request->getUploadedFiles();
@@ -1768,6 +1768,7 @@ $app->post('/product/nameplate/update/{id}', function (Request $request, Respons
 	$imageno = 1;
 	$path = "";
     foreach ($files as $key => $value) {
+
 	    $string = strtolower($string);
 	    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
 	    $string = preg_replace("/[\s-]+/", " ", $string);
@@ -1796,6 +1797,7 @@ $app->post('/product/nameplate/update/{id}', function (Request $request, Respons
 	    	$imagedata["product_type"] = 2;
 	    	$imagedata["image_number"] = $key;
 	    	$image = new ImageEntity($imagedata);
+	    	var_dump($image);
 	    	$productMapper->updateImage($image);
 	    }
 	    $imageno++;
