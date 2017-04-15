@@ -145,6 +145,49 @@ $app->post('/forgetpassword', function(Request $request, Response $response) {
 	return $response->withJson($result);
 });
 
+$app->post('/resetpassword', function(Request $request, Response $response) {
+	$verifyDetails = $request->getParsedBody();
+    	$customerMapper = new CustomerMapper($this->db);
+    	$result = [];
+	if(empty($verifyDetails['id']) && empty($verifyDetails['code'])){
+		$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+	}
+	
+	$id = base64_decode($verifyDetails['id']);
+ 	$code = $verifyDetails['code'];
+	$customer = $customerMapper->verifyUser($id, $code);
+	if (!empty($customer)) {
+		if ($customerMapper->getUserStatus($id, $code) == "1") {
+			$password = $verifyDetails["password"];
+			$confirmpassword = $verifyDetails["confirm_password"];
+			if($password == $confirmpassword){
+				$customerMapper->updatePassword($customer->getId());
+				$result["success"] = "1";
+				$result["success_message"] = " <div class='alert alert-success'> <button class='close' datata-dismiss='alert'>&times;</button> <strong>WoW !</strong>  Password Changed. </div> "; 
+				return $response->withJson($result,201);
+			}else{
+				$result["error"] = "1";
+				$result["error_message"] = " <div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button><strong>Sorry!</strong>   Password Doesn't match.</div> ";
+				return $response->withJson($result,200);
+			}
+		}else{
+			$result["error"] = "1";
+			$result["error_message"] = " <div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button><strong>sorry !</strong>  Your Account is allready Activated : <a href='login.php'>Login here</a> </div> ";
+			return $response->withJson($result,200);
+		}
+	}else{
+		$result["error"] = "1";
+    	$result["error_message"] = " <div class='alert alert-error'>
+      <button class='close' data-dismiss='alert'>&times;</button>
+      <strong>sorry !</strong>  No Account Found : <a href='signUp.php'>Signup here</a>
+      </div>
+      ";
+    	return $response->withJson($result,200);
+	}
+   	return $response->withJson($result);
+});
 
 $app->post('/verify', function(Request $request, Response $response) {
 	$verifyDetails = $request->getParsedBody();
