@@ -148,5 +148,13 @@ class CustomerMapper extends Mapper
 		$result = mysql_query($sql);
 		return $result;
 	}
+	//add below code in customer mapper
+
+	function updatePassword($id, $password){
+		$hashed_password = password_hash($password, PASSWORD_DEFAULT);
+		$sql = "UPDATE `customers` SET `password`='{$hashed_password}' WHERE `id`='{$id}'";
+		$result = mysql_query($sql);
+		return $result;
+	}
 
 }
