@@ -120,6 +120,32 @@ $app->post('/login', function(Request $request, Response $response) {
    	return $response->withJson($result);
 });
 
+$app->post('/forgetpassword', function(Request $request, Response $response) {
+	$loginCredentitals = $request->getParsedBody();
+    	$email  = $loginCredentitals["username"];
+    	$customerMapper = new CustomerMapper($this->db);
+    	$result = [];
+
+	$customer = $customerMapper->getUserDetailsByUserId($email);
+	if (!empty($customer)) {
+		$id = $customer->getId();
+		$key = base64_encode($id);
+		$token = $customerMapper->generateToken();
+		$customerMapper->updateToken($id,$token)
+		$message= "Hello , $email <br /><br /> We got requested to reset your password, if you do this then just click the following link to reset your password, if not just ignore this email,
+		       <br /><br /> Click Following Link To Reset Your Password <br /><br /><a href='http://www.kalakrutiindia.com/vresetpass.php?id=$key&code=$token'>click here to reset your password</a>
+		       <br /><br /> thank you :)";
+  		$subject = "Password Reset | Kalakruti India";
+		if ($customerMapper->sendEmailToUser($email,$message,$subject)) {
+			$result["success"] = "1";
+			$result["success_message"] ="<div class='alert alert-success'> <button class='close' data-dismiss='alert'>&times;</button> We've sent an email to $email. Please click on the password reset link in the email to generate new password. </div>";
+			return $response->withJson($result,201);
+		}
+	}
+	return $response->withJson($result);
+});
+
+
 $app->post('/verify', function(Request $request, Response $response) {
 	$verifyDetails = $request->getParsedBody();
     $customerMapper = new CustomerMapper($this->db);
