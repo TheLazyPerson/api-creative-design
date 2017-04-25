@@ -141,4 +141,10 @@ class CustomerMapper extends Mapper
 		return $result;
 	}
 
+	
+	function updateToken($id, $token){
+		$sql = "UPDATE `customers` SET `token_code`='{$token}' WHERE `id`='{$id}'";
+		$result = mysql_query($sql);
+		return $result;
+	}
 }

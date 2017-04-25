@@ -39,6 +39,7 @@ $container['db'] = function ($c) {
     return $db;
 };
 
+
 /*
  * Middleware for getting request information	
  */
@@ -69,6 +70,126 @@ $app->get('/', function ($request, $response, $args) {
     $ipAddress = $request->getAttribute('ip_address');
 
     return $response;
+});
+
+$app->post('/admin/users', function(Request $request, Response $response) {
+	
+	session_destroy();
+  	$_SESSION['admin_id'] = false;
+	
+   	return $response->withJson($result,200);
+});
+
+$app->get('/admin/isloggedin', function(Request $request, Response $response) {
+	
+	if(isset($_SESSION['admin_id'])){
+		$result["success"] = "1";
+		$result["admin_username"] = $_SESSION['admin_username'];
+		return $response->withJson($result,200);
+	}
+	$result["error"] = "1";
+	return $response->withJson($result,200);
+});
+$app->post('/admin/logout', function(Request $request, Response $response) {
+	
+	session_destroy();
+  	$_SESSION['admin_id'] = false;
+	
+   	return $response->withJson($result,200);
+});
+$app->post('/admin/login', function(Request $request, Response $response) {
+	$loginCredentials = $request->getParsedBody();
+
+    $adminMapper = new AdminMapper($this->db);
+	
+    $result = [];
+    $admin = $adminMapper->getUser($loginCredentials["username"]);
+    if (!empty($admin)) {
+
+    	if ($admin->isActive() == "0") {
+    		$result["inactive"] = "1";
+    		$result["inactive_message"] = " <div class='alert alert-error'>
+			    <button class='close' data-dismiss='alert'>&times;</button>
+			    <strong>Sorry!</strong> Account No Longer Exist. Contact Administrator. </div> ";
+    		return $response->withJson($result,200);
+    	}
+    	
+    	if (password_verify($loginCredentials["password"], $admin->getPassword())) {
+    		$_SESSION['admin_id'] = $admin->getId();
+    		$_SESSION['admin_username'] = $admin->getEmail();
+    		$result["success"] = "1";
+    		return $response->withJson($result,200);
+    	}else{
+	    	$result["error"] = "1";
+			$result["error_message"] = " <div class='alert alert-error'>
+	      <button class='close' data-dismiss='alert'>&times;</button>
+	      <strong>sorry !</strong>  Wrong Username or Password </div> ";
+			return $response->withJson($result,200);
+	    }
+    }else{
+    	$result["error"] = "1";
+		$result["error_message"] = " <div class='alert alert-error'>
+      <button class='close' data-dismiss='alert'>&times;</button>
+      <strong>sorry !</strong>  Wrong Username or Password </div> ";
+		return $response->withJson($result,200);
+    }
+
+   	return $response->withJson($result);
+});
+
+$app->post('/admin/changepassword', function(Request $request, Response $response) {
+	
+	session_destroy();
+  	$_SESSION['id'] = false;
+	
+   	return $response->withJson($result,200);
+});
+
+$app->post('/admin/signup', function(Request $request, Response $response) {
+	
+    $userDetails = $request->getParsedBody();
+    $email = $userDetails["email"];
+    $adminMapper = new AdminMapper($this->db);
+	
+    $result = [];
+    if ($adminMapper->checkIfUserExist($email)) {
+    	
+    	$result["error"] = "1";
+    	$result["error_message"] = "<div class='alert alert-error'> <button class='close' data-dismiss='alert'>&times;</button> <strong>Sorry !</strong>  email already exists , Please Try another one </div>";
+    	return $response->withJson($result,200);
+    }
+
+    $userDetails["id"] = 0;
+    $userDetails["active"] = "1";
+    $userDetails["privileged"] = "0";
+    $admin = new AdminEntity($userDetails);
+    $isCreated = $adminMapper->registerNewUser($admin);
+
+    if ( !$isCreated ) {
+    	
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $id = $adminMapper->getLastInsertedId(); 
+   	$key = base64_encode($id);
+   	
+   
+    $this->logger->addInfo(" Successfully created new user {$userDetails["email"]} .. ");
+	$result["success"] = "1";
+
+	return $response->withJson($result,201);
+
+});
+
+
+$app->post('/changepassword', function(Request $request, Response $response) {
+	
+	session_destroy();
+  	$_SESSION['id'] = false;
+	
+   	return $response->withJson($result,200);
 });
 
 $app->get('/isloggedin', function(Request $request, Response $response) {
@@ -118,6 +239,29 @@ $app->post('/login', function(Request $request, Response $response) {
     }
 
    	return $response->withJson($result);
+});
+
+$app->post('/forgetpassword', function(Request $request, Response $response) {
+	$loginCredentitals = $request->getParsedBody();
+	$email  = $loginCredentitals["username"];
+	$customerMapper = new CustomerMapper($this->db);
+	$result = [];
+
+	$customer = $customerMapper->getUserDetailsByUserId($email);
+	if (!empty($customer)) {
+		$id = $customer->getId();
+		$key = base64_encode($id);
+		$token = $customerMapper->generateToken();
+		$customerMapper->updateToken($id,$token);
+		$message= "Hello , $email <br /><br />We got requested to reset your password, if you do this then just click the following link to reset your password, if not just ignore this email,<br /><br />Click Following Link To Reset Your Password <br /><br /><a href='http://www.kalakrutiindia.com/resetpass.php?id=$key&code=$token'>click here to reset your password</a><br /><br />thank you :)";
+  		$subject = "Password Reset | Kalakruti India";
+		if ($customerMapper->sendEmailToUser($email,$message,$subject)) {
+			$result["success"] = "1";
+			$result["success_message"] ="<div class='alert alert-success'> <button class='close' data-dismiss='alert'>&times;</button> We've sent an email to $email. Please click on the password reset link in the email to generate new password. </div>";
+			return $response->withJson($result,201);
+		}
+	}
+	return $response->withJson($result);
 });
 
 $app->post('/verify', function(Request $request, Response $response) {
@@ -2217,6 +2361,8 @@ $app->post('/cart/add', function (Request $request, Response $response, $args){
 	        }
 
 	        $_SESSION["products"][$productid] = $new_product;
+	    }elseif ($producttype == "3") {
+	    	
 	    }else{
 
 	    }
@@ -3304,5 +3450,77 @@ $app->get('/product/related/{id}', function (Request $request, Response $respons
 
     return $response;
 });
+
+/*
+	Coupons Section
+
+ */
+/*Get all coupons*/
+$app->get('/admin/coupons', function (Request $request, Response $response, $args){
+    $this->logger->addInfo(" Request Recieved for listing all coupons .. ");
+	$couponMapper = new CouponMapper($this->db);
+	$result = array();
+	$data = $couponMapper->getCoupons();
+	if (isset($data) ) {
+		$this->logger->addInfo("Coupons Retrived .. ");
+		
+		foreach ($data as $key) {
+			$coupon["id"] = $key->getId();
+			$coupon["code"] = $key->getCode();
+			$coupon["start_date"] = $key->getStartDate();
+			$coupon["end_date"] = $key->getEndDate();
+			$coupon["discount"] = $key->getDiscount();
+			$result["coupons"][$key->getId()] = $coupon;
+		}		
+   		return $response->withJson($result,200);
+	}
+	$this->logger->addInfo(" Request Recieved but cannot retrieve data .. ");
+	$result["error"] = "cannot process request contact your administrator";
+	return $response->withJson($result,200);
+});
+$app->post('/admin/coupon/delete/{id}', function (Request $request, Response $response, $args){
+	$couponId = $args["id"];	
+
+    $this->logger->addInfo("Deleting coupon ". $couponId ." from database .. ");
+    
+    $couponMapper = new CouponMapper($this->db);
+    $isCreated = $couponMapper->delete($couponId);
+    if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot delete data .. ");
+		$result["error"] = "1";
+
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully deleted coupon  .".$couponId.". ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+    
+});
+$app->post('/admin/coupon/add', function (Request $request, Response $response, $args){
+    $requestedDesignDetails = $request->getParsedBody();
+
+    $this->logger->addInfo("Requesting Design for  ". $requestedDesignDetails["name"] ." into database .. ");
+    $requestedDesignDetails["id"] = 0;
+    $request = new RequestDesignEntity($requestedDesignDetails);
+    $this->logger->addInfo("Created object for request ". $request->getName() .".. ");
+
+    $requestDesignMapper = new RequestDesignMapper($this->db);
+    $isCreated = $requestDesignMapper->save($request);
+
+     if ( !$isCreated ) {
+    	$this->logger->addInfo(" Request Recieved but cannot process data .. ");
+		$result["error"] = "1";
+		return $response->withJson($result,200);
+    }
+
+    $this->logger->addInfo(" Successfully added requested design {$request->getName()} .. ");
+	$result["success"] = "1";
+	return $response->withJson($result,201);
+});
+$app->get('/coupon/verify/{code}', function (Request $request, Response $response, $args){
+    
+});
+
 
 $app->run();

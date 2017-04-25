@@ -53,7 +53,7 @@ class BlogMapper extends Mapper
 	public function save(BlogEntity $blog){
 		$blogContent = addslashes($blog->getContent());
 		$blogShortDescription = addslashes($blog->getShortDescription());
-		$sql = "INSERT INTO `blog` (`id`, `title`, `short_description`, `content`, `image_path`, `date_added`, `last_updated`, `visible`) VALUES (NULL, '{$blog->getTitle()}', '{$blogShortDescription}', '{ $blogContent }', '{$blog->getImagePath()}', NOW(), NOW(), '{$blog->isVisible()}}')";
+		$sql = "INSERT INTO `blog` (`id`, `title`, `short_description`, `content`, `image_path`, `date_added`, `last_updated`, `visible`) VALUES (NULL, '{$blog->getTitle()}', '{$blogShortDescription}', '{$blogContent}', '{$blog->getImagePath()}', NOW(), NOW(), '{$blog->isVisible()}')";
 		$result = mysql_query($sql);
 		return $result;
 	}
@@ -64,10 +64,10 @@ class BlogMapper extends Mapper
 		$blogShortDescription = addslashes($blog->getShortDescription());
 		$sql ="";
 		if ($blog->getImagePath() == "") {
-			$sql = "UPDATE `blog` SET `title`='{$blog->getTitle()}',`short_description`='{$blogShortDescription}',`content`='{ $blogContent }',`last_updated`= NOW() ,`visible`='{$blog->isVisible()}}' WHERE `id`='{$blog->getId()}'";
+			$sql = "UPDATE `blog` SET `title`='{$blog->getTitle()}',`short_description`='{$blogShortDescription}',`content`='{$blogContent}',`last_updated`= NOW() ,`visible`='{$blog->isVisible()}' WHERE `id`='{$blog->getId()}'";
 		}else{
 			
-			$sql = "UPDATE `blog` SET `title`='{$blog->getTitle()}',`short_description`='{$blogShortDescription}',`content`='{ $blogContent }',`image_path`='{$blog->getImagePath()}',`last_updated`= NOW() ,`visible`='{$blog->isVisible()}}' WHERE `id`='{$blog->getId()}'";
+			$sql = "UPDATE `blog` SET `title`='{$blog->getTitle()}',`short_description`='{$blogShortDescription}',`content`='{$blogContent}',`image_path`='{$blog->getImagePath()}',`last_updated`= NOW() ,`visible`='{$blog->isVisible()}' WHERE `id`='{$blog->getId()}'";
 		}
 		
 		$result = mysql_query($sql);
